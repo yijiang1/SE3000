@@ -7,7 +7,43 @@
 [![Local-First](https://img.shields.io/badge/Storage-IndexedDB%20%2F%20Dexie-4B32C3)](https://dexie.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-> **Special Ed 3000** is a local-first, privacy-focused AI workstation designed for special education case managers, therapists, and resource teachers. It seamlessly pairs **IEP goal progress tracking** (with linear regression trend forecasting) with an **AI-powered teaching materials generator** producing individualized lessons, board games, mini-games, songs, read-along narrations, and video storyboards themed around every student's unique passions and learning profile.
+> **Special Ed 3000** is a local-first, privacy-focused AI workstation designed for special education case managers, therapists, and resource teachers. It seamlessly pairs **IEP goal progress tracking** (with linear regression trend forecasting) with an **AI-powered teaching materials generator** producing individualized lessons, board games, mini-games, songs, read-along narrations, and video storyboards **hyper-personalized to each student's unique passions, reading level, communication supports, and sensory profile.**
+
+---
+
+## 🎯 Hyper-Personalized to Every Student's Passions & Needs
+
+Generic worksheets and one-size-fits-all curriculum often fail to engage students with diverse learning needs. **Special Ed 3000 solves this by using AI to dynamically craft custom learning materials conditioned on the student's complete individual profile:**
+
+```
+   Student Passions & Motivators          Individual Learning Profile              Target IEP Goal
+(Dinosaurs, Minecraft, Space, Robots) + (Reading Level, Sensory, AAC, Modality) + (Measurable Target & Criteria)
+                                                   │
+                                                   ▼
+                     ┌───────────────────────────────────────────────────────────┐
+                     │           Special Ed 3000 Generation Engine               │
+                     └───────────────────────────────────────────────────────────┘
+                                                   │
+         ┌──────────────────┬──────────────────────┼──────────────────┬──────────────────┐
+         ▼                  ▼                      ▼                  ▼                  ▼
+   📑 Slide Decks     🎲 Board Games        🎮 Mini-Games      🎵 Lyria Songs     🎙️ Narrations
+(Thematic Lessons) (Custom Cards & Board) (Playable Web Games) (Mnemonic Jingles) (Read-Along Audio)
+```
+
+### How Special Ed 3000 Personalizes Every Material:
+
+1. **❤️ Passions & High-Interest Themes**: Every game clue, word problem, slide narrative, and song lyric is woven around what the student genuinely loves (e.g. *Dinosaurs, Minecraft, Space Exploration, Train Schedules, Lego*). High-interest themes dramatically boost focus and task engagement.
+2. **📚 Calibrated Reading & Comprehension Levels**: Content is generated precisely at the student's instructional reading level (e.g. *Pre-reader, Early 2nd Grade vowel digraphs, 4th Grade sight words*), preventing frustration and cognitive overload.
+3. **💬 Communication Support Integration**: Adapts instructions for verbal students, AAC device users, PECS / picture exchange systems, visual storyboards, and sign language supports.
+4. **🎧 Sensory & Modality Accommodations**: Built-in calming sensory break tiles on board games, clutter-free high-contrast slide layouts for visual sensitivities, and auditory read-aloud support.
+5. **🎯 Direct Goal Alignment**: Every challenge card, quiz prompt, and practice step directly targets the student's measurable IEP benchmark (e.g. *"80% reading accuracy in 4/5 trials"* or *"3 peer social initiations per 30-min period"*).
+
+### Example: Same Goal Skill, Two Completely Personalized Experiences
+
+| Student Profile | Passion / Theme | Generated Lesson Deck | Generated Mini-Game | Generated Lyria Song |
+| :--- | :--- | :--- | :--- | :--- |
+| **JD (Grade 3, SLD)**<br>• Reading: Early 2nd Grade<br>• Needs: Visual supports, fidgets | **Dinosaurs & Fossil Digs** 🦖 | *"Dino Dig: Vowel Digraph Phonics Adventure"* (Chunked sentences, paleontologist guide) | *"Dino Vowel Matcher"* (Match fossil clues to long-vowel dinosaur words) | *"Dino Vowel Team Anthem"* (Upbeat acoustic rhyming jingle) |
+| **MR (Grade 5, ASD)**<br>• Reading: 4th Grade<br>• Needs: Visual rules, calm lighting | **Minecraft & Spacecraft** 🚀 | *"Galactic Builder: Peer Communication Quest"* (Visual dialogue steps & choice boards) | *"Space Sorter"* (Categorize social greetings vs solitary actions) | *"Peaceful Focus Orbit"* (68 BPM calming lo-fi study audio) |
 
 ---
 
@@ -15,7 +51,7 @@
 
 - **🔒 Local-First & 100% Private**: All student profiles, goal data, progress logs, and generated materials are stored in the browser's **IndexedDB** (via Dexie.js). No student PII is ever uploaded to a cloud database.
 - **📈 IEP Progress Monitoring & Trajectory Forecasting**: Log dated observation trials against measurable goals. Automatic **Ordinary Least-Squares (OLS) linear regression** evaluates trajectory and flags whether the student is *On Track 🟢*, *At Risk 🟡*, or *Off Track 🔴* toward their review deadline.
-- **🧠 Rich Student Learning Profiles**: Captures reading/decoding levels, comprehension capabilities, communication accommodations (Verbal, AAC, PECS, Visual Supports), sensory considerations, and personal motivators (e.g. *Dinosaurs, Minecraft, Space, Robotics*).
+- **🧠 Rich Student Learning Profiles**: Captures reading/decoding levels, comprehension capabilities, communication accommodations (Verbal, AAC, PECS, Visual Supports), sensory considerations, and personal motivators.
 - **🎨 Multi-Format AI Materials Hub**: Generates 6 individualized curriculum formats with consistent thematic conditioning:
   1. **Instructional Slide Decks**: Multi-slide lessons with comprehension checks, teacher notes, speech synthesis read-aloud, and PDF print export.
   2. **Printable Board & Card Games**: Thematic pathway board with interactive dice simulator, challenge cards with evaluation rubrics, and printable 8.5×11 cut-out sets.
@@ -32,14 +68,14 @@
 
 ```mermaid
 graph TD
-    A[Teacher / Case Manager] -->|Manages| B[Student Profile & Learning Context]
+    A[Teacher / Case Manager] -->|Manages| B[Student Profile: Interests + Accommodations + Level]
     B -->|Defines| C[Measurable IEP Goals]
     C -->|Logs Daily Trials| D[(IndexedDB: Progress Logs)]
     D -->|OLS Linear Regression| E[Trajectory Forecasting: On Track / At Risk / Off Track]
     
-    B & C -->|Context Conditioning| F[SE 3000 AI Materials Hub]
+    B & C -->|Thematic & Clinical Conditioning| F[SE 3000 AI Materials Hub]
     
-    subgraph "AI Generation Pipeline"
+    subgraph "Personalized AI Generation Pipeline"
         F --> G[Slide Deck Generator - Gemini 2.5 Flash]
         F --> H[Board Game Generator - Gemini 2.5 Flash]
         F --> I[Interactive Mini-Games - Gemini 2.5 Flash]
@@ -49,7 +85,7 @@ graph TD
     end
     
     G & H & I & J & K & L -->|Stored Locally| M[(IndexedDB: Generated Materials & Media Blobs)]
-    I -->|Direct Log Trial| D
+    I -->|Direct Log Trial Score| D
 ```
 
 ---
@@ -117,11 +153,11 @@ npm start
 special-ed-3000/
 ├── app/
 │   ├── api/generate/           # Server-side AI generation endpoints
-│   │   ├── board-game/route.ts # Board game generator
-│   │   ├── mini-game/route.ts  # Browser mini-game generator
+│   │   ├── board-game/route.ts # Board game generator (Gemini 2.5 Flash)
+│   │   ├── mini-game/route.ts  # Browser mini-game generator (Gemini 2.5 Flash)
 │   │   ├── music/route.ts      # Lyria 3 music synthesizer
 │   │   ├── narration/route.ts  # OpenAI TTS audio generator
-│   │   ├── slides/route.ts     # Slide deck generator
+│   │   ├── slides/route.ts     # Slide deck generator (Gemini + Imagen)
 │   │   └── video/route.ts      # Veo 3.1 video storyboard generator
 │   ├── globals.css             # Tailwind v4 theme & CSS variables
 │   ├── layout.tsx              # Root HTML shell & metadata
