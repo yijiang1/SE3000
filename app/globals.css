@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+:root {
+  --color-on-track: #22c55e;
+  --color-at-risk: #f59e0b;
+  --color-off-track: #ef4444;
+  --color-no-data: #9ca3af;
+}
+
+body {
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+/* Smooth scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}

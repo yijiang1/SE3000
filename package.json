@@ -1,0 +1,32 @@
+{
+  "name": "special-ed-3000",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@google/genai": "^2.19.0",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^26.4.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "@types/uuid": "^10.0.0",
+    "autoprefixer": "^10.5.4",
+    "clsx": "^2.1.1",
+    "dexie": "^4.4.5",
+    "lucide-react": "^1.37.0",
+    "next": "^16.3.3",
+    "openai": "^7.8.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "uuid": "^14.0.2"
+  },
+  "description": "Local-first AI-powered special education teaching materials generator and IEP goal progress tracker"
+}
