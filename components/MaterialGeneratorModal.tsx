@@ -1,7 +1,7 @@
 "use client";
 // components/MaterialGeneratorModal.tsx — Unified AI Materials Hub modal
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sparkles,
   BookOpen,
@@ -15,7 +15,8 @@ import {
   AlertCircle,
   Loader2,
   ArrowRight,
-  ClipboardList
+  ClipboardList,
+  GitCompare
 } from "lucide-react";
 import { clsx } from "clsx";
 import type {
@@ -27,8 +28,19 @@ import type {
   MiniGameEngineType,
   WorksheetSpec
 } from "@/types/iep";
-import { generateAndSaveMaterial } from "@/lib/materials";
+import { generateAndSaveMaterial, generateMaterialVariants, CAPABILITY_FOR_MATERIAL_TYPE } from "@/lib/materials";
+import {
+  TEXT_PROVIDER_LABELS,
+  TTS_PROVIDER_LABELS,
+  type TextProviderId,
+  type TTSProviderId
+} from "@/lib/ai/providers";
 import WorksheetSpecControls, { defaultWorksheetSpec } from "@/components/planning/WorksheetSpecControls";
+
+interface ConfigStatus {
+  text: Record<TextProviderId, boolean>;
+  tts: Record<TTSProviderId, boolean>;
+}
 
 interface Props {
   profile: StudentIEPProfile;
@@ -36,6 +48,7 @@ interface Props {
   allLogs: ProgressLogEntry[];
   onClose: () => void;
   onMaterialCreated: (material: GeneratedMaterial) => void;
+  onVariantsCreated: (materials: GeneratedMaterial[]) => void;
 }
 
 interface FormatOption {
@@ -127,13 +140,30 @@ export default function MaterialGeneratorModal({
   selectedGoal,
   allLogs,
   onClose,
-  onMaterialCreated
+  onMaterialCreated,
+  onVariantsCreated
 }: Props) {
   const [activeGoalId, setActiveGoalId] = useState<string>(
     selectedGoal?.id || profile.goals[0]?.id || ""
   );
   const [selectedFormat, setSelectedFormat] = useState<MaterialType>("slide_deck");
   const [customInstructions, setCustomInstructions] = useState("");
+  const [configStatus, setConfigStatus] = useState<ConfigStatus | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/config/status")
+      .then((r) => r.json())
+      .then(setConfigStatus)
+      .catch(() => setConfigStatus(null));
+  }, []);
+
+  const capability = CAPABILITY_FOR_MATERIAL_TYPE[selectedFormat];
+  const labels = capability === "tts" ? TTS_PROVIDER_LABELS : TEXT_PROVIDER_LABELS;
+  const configuredProviderIds = configStatus
+    ? Object.entries(configStatus[capability]).filter(([, ok]) => ok).map(([id]) => id)
+    : [];
+  const canCompare = configuredProviderIds.length >= 2;
 
   // Sub-options
   const [miniGameEngine, setMiniGameEngine] = useState<MiniGameEngineType>("matching");
@@ -158,23 +188,30 @@ export default function MaterialGeneratorModal({
     setIsGenerating(true);
     setErrorMessage(null);
 
-    try {
-      const result = await generateAndSaveMaterial(
-        profile,
-        currentGoal,
-        allLogs,
-        selectedFormat,
-        {
-          customPrompt: customInstructions || undefined,
-          miniGameEngine,
-          musicPurpose,
-          narrationVoice,
-          narrationSpeed,
-          worksheetSpec,
-        }
-      );
+    const options = {
+      customPrompt: customInstructions || undefined,
+      miniGameEngine,
+      musicPurpose,
+      narrationVoice,
+      narrationSpeed,
+      worksheetSpec,
+    };
 
-      onMaterialCreated(result);
+    try {
+      if (compareMode && canCompare) {
+        const results = await generateMaterialVariants(
+          profile,
+          currentGoal,
+          allLogs,
+          selectedFormat,
+          configuredProviderIds,
+          options
+        );
+        onVariantsCreated(results);
+      } else {
+        const result = await generateAndSaveMaterial(profile, currentGoal, allLogs, selectedFormat, options);
+        onMaterialCreated(result);
+      }
     } catch (err: any) {
       setErrorMessage(err.message || "Generation failed. Please try again.");
     } finally {
@@ -282,6 +319,28 @@ export default function MaterialGeneratorModal({
               })}
             </div>
           </div>
+
+          {/* Compare Providers Toggle */}
+          {canCompare && (
+            <label className="flex items-start gap-3 p-4 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={compareMode}
+                onChange={(e) => setCompareMode(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-indigo-600"
+              />
+              <span>
+                <span className="flex items-center gap-1.5 text-sm font-bold text-indigo-900">
+                  <GitCompare className="w-4 h-4" /> Compare {configuredProviderIds.length} providers instead of one
+                </span>
+                <span className="block text-xs text-indigo-700 mt-0.5">
+                  Generates this material once with each of{" "}
+                  {configuredProviderIds.map((id) => labels[id as keyof typeof labels] || id).join(", ")}, so you can
+                  view all versions and keep the one you like best.
+                </span>
+              </span>
+            </label>
+          )}
 
           {/* Conditional Sub-Options */}
           {selectedFormat === "mini_game" && (
@@ -434,7 +493,16 @@ export default function MaterialGeneratorModal({
             {isGenerating ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Generating {selectedFormat.replace("_", " ")}…</span>
+                <span>
+                  Generating {selectedFormat.replace("_", " ")}
+                  {compareMode && canCompare ? ` (${configuredProviderIds.length} versions)…` : "…"}
+                </span>
+              </>
+            ) : compareMode && canCompare ? (
+              <>
+                <GitCompare className="w-4 h-4" />
+                <span>Generate {configuredProviderIds.length} Versions to Compare</span>
+                <ArrowRight className="w-4 h-4" />
               </>
             ) : (
               <>

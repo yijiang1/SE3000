@@ -3,7 +3,7 @@
 // First-Day Materials categories (Teacher Introduction, Classroom Expectations,
 // Icebreaker Activities, Family Welcome Letter & Getting-to-Know-You Survey)
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sparkles,
   BookOpen,
@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  ArrowRight
+  ArrowRight,
+  GitCompare
 } from "lucide-react";
 import { clsx } from "clsx";
 import type {
@@ -25,7 +26,12 @@ import type {
   FirstDayMaterialFormat,
   FirstDayMaterial
 } from "@/types/iep";
-import { generateAndSaveFirstDayMaterial, type FamilyLetterSubject } from "@/lib/firstDayMaterials";
+import {
+  generateAndSaveFirstDayMaterial,
+  generateFirstDayMaterialVariants,
+  type FamilyLetterSubject
+} from "@/lib/firstDayMaterials";
+import { TEXT_PROVIDER_LABELS, type TextProviderId } from "@/lib/ai/providers";
 
 type FirstDaySubject = TeacherProfile | ClassroomProfile | IcebreakerProfile | SurveyProfile | FamilyLetterSubject;
 
@@ -34,6 +40,7 @@ interface Props {
   subject: FirstDaySubject;
   onClose: () => void;
   onMaterialCreated: (material: FirstDayMaterial) => void;
+  onVariantsCreated: (materials: FirstDayMaterial[]) => void;
 }
 
 type Accent = "amber" | "teal" | "pink" | "indigo" | "violet";
@@ -209,7 +216,7 @@ const FORMAT_COSTS: Record<FirstDayMaterialFormat, string> = {
   video_clip: "~$0.40",
 };
 
-export default function FirstDayGeneratorModal({ category, subject, onClose, onMaterialCreated }: Props) {
+export default function FirstDayGeneratorModal({ category, subject, onClose, onMaterialCreated, onVariantsCreated }: Props) {
   const meta = CATEGORY_META[category];
   const styles = ACCENT_STYLES[meta.accent];
 
@@ -217,15 +224,39 @@ export default function FirstDayGeneratorModal({ category, subject, onClose, onM
   const [customInstructions, setCustomInstructions] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [configuredTextProviders, setConfiguredTextProviders] = useState<TextProviderId[]>([]);
+  const [compareMode, setCompareMode] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/config/status")
+      .then((r) => r.json())
+      .then((status) =>
+        setConfiguredTextProviders(
+          Object.entries(status.text || {})
+            .filter(([, ok]) => ok)
+            .map(([id]) => id as TextProviderId)
+        )
+      )
+      .catch(() => setConfiguredTextProviders([]));
+  }, []);
+
+  const canCompare = configuredTextProviders.length >= 2;
 
   async function handleGenerate() {
     setIsGenerating(true);
     setErrorMessage(null);
     try {
-      const result = await generateAndSaveFirstDayMaterial(category, subject, selectedFormat, {
-        customPrompt: customInstructions || undefined,
-      });
-      onMaterialCreated(result);
+      if (compareMode && canCompare) {
+        const results = await generateFirstDayMaterialVariants(category, subject, selectedFormat, configuredTextProviders, {
+          customPrompt: customInstructions || undefined,
+        });
+        onVariantsCreated(results);
+      } else {
+        const result = await generateAndSaveFirstDayMaterial(category, subject, selectedFormat, {
+          customPrompt: customInstructions || undefined,
+        });
+        onMaterialCreated(result);
+      }
     } catch (err: any) {
       setErrorMessage(err.message || "Generation failed. Please try again.");
     } finally {
@@ -291,6 +322,27 @@ export default function FirstDayGeneratorModal({ category, subject, onClose, onM
             </div>
           </div>
 
+          {canCompare && (
+            <label className="flex items-start gap-3 p-4 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={compareMode}
+                onChange={(e) => setCompareMode(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-indigo-600"
+              />
+              <span>
+                <span className="flex items-center gap-1.5 text-sm font-bold text-indigo-900">
+                  <GitCompare className="w-4 h-4" /> Compare {configuredTextProviders.length} providers instead of one
+                </span>
+                <span className="block text-xs text-indigo-700 mt-0.5">
+                  Generates this material once with each of{" "}
+                  {configuredTextProviders.map((id) => TEXT_PROVIDER_LABELS[id]).join(", ")}, so you can view all
+                  versions and keep the one you like best.
+                </span>
+              </span>
+            </label>
+          )}
+
           <div>
             <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">
               Custom Instructions (Optional):
@@ -329,7 +381,13 @@ export default function FirstDayGeneratorModal({ category, subject, onClose, onM
             {isGenerating ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Generating…</span>
+                <span>Generating{compareMode && canCompare ? ` (${configuredTextProviders.length} versions)` : ""}…</span>
+              </>
+            ) : compareMode && canCompare ? (
+              <>
+                <GitCompare className="w-4 h-4" />
+                <span>Generate {configuredTextProviders.length} Versions to Compare</span>
+                <ArrowRight className="w-4 h-4" />
               </>
             ) : (
               <>

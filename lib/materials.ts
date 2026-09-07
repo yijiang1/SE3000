@@ -10,7 +10,8 @@ import type {
   GeneratedMaterial,
   MiniGameEngineType,
   WorksheetSpec,
-  PLAAFPAnalysis
+  PLAAFPAnalysis,
+  GenerationContext
 } from "@/types/iep";
 import { buildGenerationContext } from "./generators/context";
 import { getAppSettings } from "./settings";
@@ -28,35 +29,25 @@ export interface GenerateOptions {
   plaafp?: PLAAFPAnalysis;
 }
 
-export async function generateAndSaveMaterial(
-  profile: StudentIEPProfile,
-  goal: IEPGoal,
-  logs: ProgressLogEntry[],
+/** Which provider-preference bucket a material type's generation is driven by. */
+export const CAPABILITY_FOR_MATERIAL_TYPE: Record<MaterialType, "text" | "tts"> = {
+  slide_deck: "text",
+  board_game: "text",
+  mini_game: "text",
+  music: "text",
+  narration: "tts",
+  video_clip: "text",
+  worksheet: "text",
+};
+
+function buildEndpointAndPayload(
   type: MaterialType,
-  options: GenerateOptions = {}
-): Promise<GeneratedMaterial> {
-  const context = buildGenerationContext(profile, goal, logs);
-  const now = new Date().toISOString();
-  const materialId = uuidv4();
-
-  const tempRecord: GeneratedMaterial = {
-    id: materialId,
-    profileId: profile.id,
-    goalId: goal.id,
-    type,
-    status: "generating",
-    title: `Generating ${type.replace("_", " ")}…`,
-    description: `Targeting: ${goal.goalText.slice(0, 50)}…`,
-    promptUsed: options.customPrompt || `Standard ${type} generation for ${profile.studentInitials}`,
-    modelUsed: "pending",
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  await db.generatedMaterials.put(tempRecord);
-
+  context: GenerationContext,
+  profile: StudentIEPProfile,
+  options: GenerateOptions
+): { endpoint: string; payload: any } {
   let endpoint = "/api/generate/slides";
-  let payload: any = { context, customPrompt: options.customPrompt };
+  const payload: any = { context, customPrompt: options.customPrompt };
 
   switch (type) {
     case "slide_deck":
@@ -101,10 +92,37 @@ export async function generateAndSaveMaterial(
       break;
   }
 
-  try {
-    const settings = await getAppSettings();
-    payload.providerPreferences = settings.providerPreferences;
+  return { endpoint, payload };
+}
 
+async function runOneGeneration(
+  profile: StudentIEPProfile,
+  goal: IEPGoal,
+  type: MaterialType,
+  endpoint: string,
+  payload: any,
+  options: GenerateOptions
+): Promise<GeneratedMaterial> {
+  const now = new Date().toISOString();
+  const materialId = uuidv4();
+
+  const tempRecord: GeneratedMaterial = {
+    id: materialId,
+    profileId: profile.id,
+    goalId: goal.id,
+    type,
+    status: "generating",
+    title: `Generating ${type.replace("_", " ")}…`,
+    description: `Targeting: ${goal.goalText.slice(0, 50)}…`,
+    promptUsed: options.customPrompt || `Standard ${type} generation for ${profile.studentInitials}`,
+    modelUsed: "pending",
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await db.generatedMaterials.put(tempRecord);
+
+  try {
     const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -134,6 +152,7 @@ export async function generateAndSaveMaterial(
       description: worksheetDescription || content.topic || content.instructions || content.objective || `Personalized ${type.replace("_", " ")} resource for ${profile.studentInitials}`,
       promptUsed: options.customPrompt || `Generated with ${type} engine`,
       modelUsed: data.modelUsed || "se-3000-engine",
+      provider: data.provider,
       generationCostEstimate: data.costEstimate || 0,
       contentJson: JSON.stringify(content),
       createdAt: now,
@@ -153,6 +172,67 @@ export async function generateAndSaveMaterial(
     await db.generatedMaterials.put(errorRecord);
     throw err;
   }
+}
+
+export async function generateAndSaveMaterial(
+  profile: StudentIEPProfile,
+  goal: IEPGoal,
+  logs: ProgressLogEntry[],
+  type: MaterialType,
+  options: GenerateOptions = {}
+): Promise<GeneratedMaterial> {
+  const context = buildGenerationContext(profile, goal, logs);
+  const { endpoint, payload } = buildEndpointAndPayload(type, context, profile, options);
+
+  const settings = await getAppSettings();
+  payload.providerPreferences = settings.providerPreferences;
+
+  return runOneGeneration(profile, goal, type, endpoint, payload, options);
+}
+
+/**
+ * Generate the same material once per given provider so a teacher can compare
+ * results side by side and keep the best one. Each call forces that single
+ * provider (no fallback chain) and is saved as its own GeneratedMaterial —
+ * a failed provider still yields a record (status "error") rather than
+ * aborting the whole batch, via allSettled.
+ */
+export async function generateMaterialVariants(
+  profile: StudentIEPProfile,
+  goal: IEPGoal,
+  logs: ProgressLogEntry[],
+  type: MaterialType,
+  providerIds: string[],
+  options: GenerateOptions = {}
+): Promise<GeneratedMaterial[]> {
+  const context = buildGenerationContext(profile, goal, logs);
+  const { endpoint, payload: basePayload } = buildEndpointAndPayload(type, context, profile, options);
+  const capability = CAPABILITY_FOR_MATERIAL_TYPE[type];
+
+  const settled = await Promise.allSettled(
+    providerIds.map(async (providerId) => {
+      const payload = { ...basePayload, providerPreferences: { [capability]: [providerId] } };
+      const result = await runOneGeneration(profile, goal, type, endpoint, payload, options);
+      // A forced single-provider request can still silently fall back to the
+      // local synthesizer (invalid/expired key, transient provider error)
+      // without throwing. Label the card with what was actually REQUESTED in
+      // that case, so two failed providers don't render as identical,
+      // unlabeled "Local Engine" cards.
+      if (result.status === "ready" && !result.provider) {
+        const tagged: GeneratedMaterial = { ...result, provider: providerId };
+        await db.generatedMaterials.put(tagged);
+        return tagged;
+      }
+      return result;
+    })
+  );
+
+  // runOneGeneration always persists a record (ready or error) even on
+  // rejection, so every settled result — fulfilled or rejected — has a
+  // corresponding row in Dexie already; just surface what we can here.
+  return settled
+    .filter((r): r is PromiseFulfilledResult<GeneratedMaterial> => r.status === "fulfilled")
+    .map((r) => r.value);
 }
 
 export async function deleteMaterial(materialId: string): Promise<void> {

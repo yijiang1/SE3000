@@ -220,11 +220,12 @@ function buildPayload(category: FirstDayMaterialCategory, subject: FirstDaySubje
   return { [SUBJECT_PAYLOAD_KEY[category]]: subject };
 }
 
-export async function generateAndSaveFirstDayMaterial(
+async function runOneFirstDayGeneration(
   category: FirstDayMaterialCategory,
   subject: FirstDaySubject,
   format: FirstDayMaterialFormat,
-  options: GenerateFirstDayMaterialOptions = {}
+  options: GenerateFirstDayMaterialOptions,
+  payload: any
 ): Promise<FirstDayMaterial> {
   const now = new Date().toISOString();
   const materialId = uuidv4();
@@ -245,12 +246,7 @@ export async function generateAndSaveFirstDayMaterial(
 
   await db.firstDayMaterials.put(tempRecord);
 
-  const payload: any = { category, format, customPrompt: options.customPrompt, ...buildPayload(category, subject) };
-
   try {
-    const settings = await getAppSettings();
-    payload.providerPreferences = settings.providerPreferences;
-
     const res = await fetch("/api/generate/first-day", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -274,6 +270,7 @@ export async function generateAndSaveFirstDayMaterial(
       description: content.tagline || content.topic || `First-day ${category.replace("_", " ")} · ${format.replace("_", " ")}`,
       promptUsed: options.customPrompt || `Generated with first-day engine`,
       modelUsed: data.modelUsed || "se-3000-engine",
+      provider: data.provider,
       generationCostEstimate: data.costEstimate || 0,
       contentJson: JSON.stringify(content),
       createdAt: now,
@@ -293,6 +290,55 @@ export async function generateAndSaveFirstDayMaterial(
     await db.firstDayMaterials.put(errorRecord);
     throw err;
   }
+}
+
+export async function generateAndSaveFirstDayMaterial(
+  category: FirstDayMaterialCategory,
+  subject: FirstDaySubject,
+  format: FirstDayMaterialFormat,
+  options: GenerateFirstDayMaterialOptions = {}
+): Promise<FirstDayMaterial> {
+  const payload: any = { category, format, customPrompt: options.customPrompt, ...buildPayload(category, subject) };
+  const settings = await getAppSettings();
+  payload.providerPreferences = settings.providerPreferences;
+
+  return runOneFirstDayGeneration(category, subject, format, options, payload);
+}
+
+/**
+ * Generate the same first-day material once per given text provider so a
+ * teacher can compare results and keep the best one. Every first-day format
+ * (slide deck, webpage, storyboard) is driven purely by the text-generation
+ * chain, so the provider set is always "text".
+ */
+export async function generateFirstDayMaterialVariants(
+  category: FirstDayMaterialCategory,
+  subject: FirstDaySubject,
+  format: FirstDayMaterialFormat,
+  providerIds: string[],
+  options: GenerateFirstDayMaterialOptions = {}
+): Promise<FirstDayMaterial[]> {
+  const basePayload: any = { category, format, customPrompt: options.customPrompt, ...buildPayload(category, subject) };
+
+  const settled = await Promise.allSettled(
+    providerIds.map(async (providerId) => {
+      const payload = { ...basePayload, providerPreferences: { text: [providerId] } };
+      const result = await runOneFirstDayGeneration(category, subject, format, options, payload);
+      // See generateMaterialVariants for why: a forced single-provider
+      // request can silently fall back to local without throwing, so label
+      // the card with what was actually requested in that case.
+      if (result.status === "ready" && !result.provider) {
+        const tagged: FirstDayMaterial = { ...result, provider: providerId };
+        await db.firstDayMaterials.put(tagged);
+        return tagged;
+      }
+      return result;
+    })
+  );
+
+  return settled
+    .filter((r): r is PromiseFulfilledResult<FirstDayMaterial> => r.status === "fulfilled")
+    .map((r) => r.value);
 }
 
 export async function deleteFirstDayMaterial(materialId: string): Promise<void> {

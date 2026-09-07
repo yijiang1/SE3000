@@ -187,6 +187,7 @@ export interface GeneratedMaterial {
   description: string;
   promptUsed: string;
   modelUsed: string;
+  provider?: string;             // which AI provider produced this (undefined = local/offline)
   generationCostEstimate?: number;
   contentJson?: string;          // Serialized JSON for slides, board games, mini games, etc.
   blobKeys?: string[];           // IDs pointing to materialBlobs table
@@ -664,6 +665,7 @@ export interface FirstDayMaterial {
   description: string;
   promptUsed: string;
   modelUsed: string;
+  provider?: string;             // which AI provider produced this (undefined = local/offline)
   generationCostEstimate?: number;
   contentJson?: string;          // Serialized FirstDayMaterialContent
   blobKeys?: string[];

@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import db from "@/lib/db";
 import { seedIfEmpty } from "@/lib/seed";
-import { cleanupStaleMaterials } from "@/lib/materials";
+import { cleanupStaleMaterials, deleteMaterial } from "@/lib/materials";
 import {
   getTeacherProfile,
   getClassroomProfile,
@@ -29,6 +29,7 @@ import {
   getSurveyProfile,
   getFirstDayMaterials,
   cleanupStaleFirstDayMaterials,
+  deleteFirstDayMaterial,
   emptyTeacherProfile,
   emptyClassroomProfile,
   emptyIcebreakerProfile,
@@ -58,6 +59,7 @@ import ProgressSummary from "@/components/ProgressSummary";
 import AddStudentForm from "@/components/AddStudentForm";
 import AddGoalForm from "@/components/AddGoalForm";
 import MaterialGeneratorModal from "@/components/MaterialGeneratorModal";
+import CompareResultsModal from "@/components/CompareResultsModal";
 import MaterialsGallery from "@/components/MaterialsGallery";
 import PlanningSessionsSection from "@/components/planning/PlanningSessionsSection";
 import PlanningAssistantModal from "@/components/planning/PlanningAssistantModal";
@@ -115,6 +117,7 @@ export default function DashboardPage() {
   const [showSurveyProfileForm, setShowSurveyProfileForm] = useState(false);
   const [generatorCategory, setGeneratorCategory] = useState<FirstDayMaterialCategory | null>(null);
   const [viewingFirstDayMaterial, setViewingFirstDayMaterial] = useState<FirstDayMaterial | null>(null);
+  const [firstDayCompareResults, setFirstDayCompareResults] = useState<FirstDayMaterial[] | null>(null);
 
   // Modals & Drawers state
   const [showPlaafp, setShowPlaafp] = useState(false);
@@ -128,6 +131,7 @@ export default function DashboardPage() {
   const [generatorGoal, setGeneratorGoal] = useState<IEPGoal | undefined>(undefined);
   const [showGenerator, setShowGenerator] = useState(false);
   const [viewingMaterial, setViewingMaterial] = useState<GeneratedMaterial | null>(null);
+  const [compareResults, setCompareResults] = useState<GeneratedMaterial[] | null>(null);
 
   const selectedProfile = profiles.find((p) => p.id === selectedId) ?? null;
 
@@ -263,6 +267,17 @@ export default function DashboardPage() {
     setViewingMaterial(mat);
   }
 
+  function handleVariantsCreated(materials: GeneratedMaterial[]) {
+    setShowGenerator(false);
+    loadStudentData();
+    setCompareResults(materials);
+  }
+
+  async function handleCompareResultDeleted(mat: GeneratedMaterial) {
+    await deleteMaterial(mat.id);
+    loadStudentData();
+  }
+
   function handleTeacherProfileSaved(profile: TeacherProfile) {
     setTeacherProfile(profile);
     setShowTeacherProfileForm(false);
@@ -287,6 +302,17 @@ export default function DashboardPage() {
     setGeneratorCategory(null);
     loadFirstDayData();
     setViewingFirstDayMaterial(mat);
+  }
+
+  function handleFirstDayVariantsCreated(materials: FirstDayMaterial[]) {
+    setGeneratorCategory(null);
+    loadFirstDayData();
+    setFirstDayCompareResults(materials);
+  }
+
+  async function handleFirstDayCompareResultDeleted(mat: FirstDayMaterial) {
+    await deleteFirstDayMaterial(mat.id);
+    loadFirstDayData();
   }
 
   if (loading) {
@@ -700,6 +726,17 @@ export default function DashboardPage() {
           allLogs={logs}
           onClose={() => setShowGenerator(false)}
           onMaterialCreated={handleMaterialCreated}
+          onVariantsCreated={handleVariantsCreated}
+        />
+      )}
+
+      {/* Compare Providers Results Modal */}
+      {compareResults && (
+        <CompareResultsModal
+          materials={compareResults}
+          onView={(mat) => setViewingMaterial(mat)}
+          onDelete={handleCompareResultDeleted}
+          onClose={() => setCompareResults(null)}
         />
       )}
 
@@ -834,35 +871,55 @@ export default function DashboardPage() {
           category="teacher_intro"
           subject={teacherProfile}
           onClose={() => setGeneratorCategory(null)}
-          onMaterialCreated={handleFirstDayMaterialCreated}        />
+          onMaterialCreated={handleFirstDayMaterialCreated}
+          onVariantsCreated={handleFirstDayVariantsCreated}
+        />
       )}
       {generatorCategory === "classroom_expectations" && classroomProfile && (
         <FirstDayGeneratorModal
           category="classroom_expectations"
           subject={classroomProfile}
           onClose={() => setGeneratorCategory(null)}
-          onMaterialCreated={handleFirstDayMaterialCreated}        />
+          onMaterialCreated={handleFirstDayMaterialCreated}
+          onVariantsCreated={handleFirstDayVariantsCreated}
+        />
       )}
       {generatorCategory === "icebreaker_activities" && icebreakerProfile && (
         <FirstDayGeneratorModal
           category="icebreaker_activities"
           subject={icebreakerProfile}
           onClose={() => setGeneratorCategory(null)}
-          onMaterialCreated={handleFirstDayMaterialCreated}        />
+          onMaterialCreated={handleFirstDayMaterialCreated}
+          onVariantsCreated={handleFirstDayVariantsCreated}
+        />
       )}
       {generatorCategory === "family_letter" && teacherProfile && (
         <FirstDayGeneratorModal
           category="family_letter"
           subject={{ teacher: teacherProfile, classroom: classroomProfile }}
           onClose={() => setGeneratorCategory(null)}
-          onMaterialCreated={handleFirstDayMaterialCreated}        />
+          onMaterialCreated={handleFirstDayMaterialCreated}
+          onVariantsCreated={handleFirstDayVariantsCreated}
+        />
       )}
       {generatorCategory === "getting_to_know_you" && surveyProfile && (
         <FirstDayGeneratorModal
           category="getting_to_know_you"
           subject={surveyProfile}
           onClose={() => setGeneratorCategory(null)}
-          onMaterialCreated={handleFirstDayMaterialCreated}        />
+          onMaterialCreated={handleFirstDayMaterialCreated}
+          onVariantsCreated={handleFirstDayVariantsCreated}
+        />
+      )}
+
+      {/* Compare Providers Results Modal (First-Day Materials) */}
+      {firstDayCompareResults && (
+        <CompareResultsModal
+          materials={firstDayCompareResults}
+          onView={(mat) => setViewingFirstDayMaterial(mat)}
+          onDelete={handleFirstDayCompareResultDeleted}
+          onClose={() => setFirstDayCompareResults(null)}
+        />
       )}
 
       {/* First-Day Material Viewer (shared by all five categories) */}
