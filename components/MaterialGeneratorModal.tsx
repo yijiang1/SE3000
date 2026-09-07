@@ -14,7 +14,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  ArrowRight
+  ArrowRight,
+  ClipboardList
 } from "lucide-react";
 import { clsx } from "clsx";
 import type {
@@ -23,9 +24,11 @@ import type {
   ProgressLogEntry,
   MaterialType,
   GeneratedMaterial,
-  MiniGameEngineType
+  MiniGameEngineType,
+  WorksheetSpec
 } from "@/types/iep";
 import { generateAndSaveMaterial } from "@/lib/materials";
+import WorksheetSpecControls, { defaultWorksheetSpec } from "@/components/planning/WorksheetSpecControls";
 
 interface Props {
   profile: StudentIEPProfile;
@@ -107,6 +110,16 @@ const FORMAT_OPTIONS: FormatOption[] = [
     model: "veo-3.1-fast",
     cost: "~$0.40",
   },
+  {
+    type: "worksheet",
+    title: "Worksheet / Homework",
+    badge: "Gemini 2.5 Flash",
+    description: "Differentiated practice, homework, exit tickets, or quizzes aligned to the goal and instructional level, with answer key.",
+    icon: ClipboardList,
+    color: "from-indigo-600 to-blue-600 border-indigo-200 text-indigo-700",
+    model: "gemini-2.5-flash",
+    cost: "~$0.014",
+  },
 ];
 
 export default function MaterialGeneratorModal({
@@ -127,6 +140,9 @@ export default function MaterialGeneratorModal({
   const [musicPurpose, setMusicPurpose] = useState<"mnemonic_song" | "calming_focus" | "reward_jingle" | "transition_cue">("mnemonic_song");
   const [narrationVoice, setNarrationVoice] = useState<"alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer">("nova");
   const [narrationSpeed, setNarrationSpeed] = useState(0.9);
+  const [worksheetSpec, setWorksheetSpec] = useState<WorksheetSpec>(
+    defaultWorksheetSpec(profile.learningProfile?.readingLevel || "Grade level")
+  );
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -154,6 +170,7 @@ export default function MaterialGeneratorModal({
           musicPurpose,
           narrationVoice,
           narrationSpeed,
+          worksheetSpec,
         }
       );
 
@@ -365,6 +382,15 @@ export default function MaterialGeneratorModal({
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {selectedFormat === "worksheet" && (
+            <div className="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-200">
+              <label className="block text-xs font-bold text-indigo-900 uppercase mb-2">
+                Worksheet options:
+              </label>
+              <WorksheetSpecControls spec={worksheetSpec} onChange={setWorksheetSpec} />
             </div>
           )}
 

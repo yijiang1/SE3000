@@ -24,6 +24,16 @@ interface Props {
   onClose?: () => void;
 }
 
+/** Unbiased Fisher–Yates shuffle returning a new array. */
+function shuffle<T>(input: readonly T[]): T[] {
+  const arr = [...input];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export default function MiniGamePlayer({
   content,
   profileId,
@@ -35,6 +45,10 @@ export default function MiniGamePlayer({
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
   const [matchedPairs, setMatchedPairs] = useState<string[]>([]);
+  // Answers column is shuffled so the correct match is not row-aligned with its prompt.
+  const [shuffledMatches, setShuffledMatches] = useState(() =>
+    shuffle(content.matchingPairs || [])
+  );
 
   // Quiz Engine State
   const [currentQuizIdx, setCurrentQuizIdx] = useState(0);
@@ -47,7 +61,7 @@ export default function MiniGamePlayer({
 
   // Sequencing Engine State
   const [sequenceItems, setSequenceItems] = useState(() =>
-    [...(content.sequencingSteps || [])].sort(() => Math.random() - 0.5)
+    shuffle(content.sequencingSteps || [])
   );
 
   // Common completion & logging state
@@ -175,7 +189,8 @@ export default function MiniGamePlayer({
     setSelectedOption(null);
     setShowHint(false);
     setPlacedItems({});
-    setSequenceItems([...(content.sequencingSteps || [])].sort(() => Math.random() - 0.5));
+    setSequenceItems(shuffle(content.sequencingSteps || []));
+    setShuffledMatches(shuffle(content.matchingPairs || []));
     setGameCompleted(false);
     setLoggedSuccess(false);
   }
@@ -293,7 +308,7 @@ export default function MiniGamePlayer({
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">
                     Target Answers
                   </span>
-                  {content.matchingPairs?.map((pair) => {
+                  {shuffledMatches.map((pair) => {
                     const isMatched = matchedPairs.includes(pair.id);
                     const isSelected = selectedMatch === pair.id;
                     return (

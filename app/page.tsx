@@ -9,17 +9,22 @@ import {
   UserPlus,
   ChevronDown,
   Layers,
-  GraduationCap
+  GraduationCap,
+  AlertTriangle,
+  ClipboardList
 } from "lucide-react";
 import db from "@/lib/db";
 import { seedIfEmpty } from "@/lib/seed";
+import { cleanupStaleMaterials } from "@/lib/materials";
+import { getPlanningSessionsForProfile } from "@/lib/planning";
 import { computeTrend } from "@/lib/trending";
 import type {
   StudentIEPProfile,
   ProgressLogEntry,
   TrendResult,
   GeneratedMaterial,
-  IEPGoal
+  IEPGoal,
+  PlanningSession
 } from "@/types/iep";
 import StudentHeader from "@/components/StudentHeader";
 import GoalCard from "@/components/GoalCard";
@@ -30,6 +35,8 @@ import AddStudentForm from "@/components/AddStudentForm";
 import AddGoalForm from "@/components/AddGoalForm";
 import MaterialGeneratorModal from "@/components/MaterialGeneratorModal";
 import MaterialsGallery from "@/components/MaterialsGallery";
+import PlanningSessionsSection from "@/components/planning/PlanningSessionsSection";
+import PlanningAssistantModal from "@/components/planning/PlanningAssistantModal";
 
 // Interactive Material Presenters
 import SlideDeckViewer from "@/components/materials/SlideDeckViewer";
@@ -38,19 +45,35 @@ import MiniGamePlayer from "@/components/materials/MiniGamePlayer";
 import AudioMusicPlayer from "@/components/materials/AudioMusicPlayer";
 import NarrationPlayer from "@/components/materials/NarrationPlayer";
 import VideoPlayer from "@/components/materials/VideoPlayer";
+import WorksheetViewer from "@/components/materials/WorksheetViewer";
+
+/** Parse a stored material's contentJson, returning null instead of throwing. */
+function safeParseContent(json: string | undefined): any | null {
+  if (!json) return null;
+  try {
+    const parsed = JSON.parse(json);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function DashboardPage() {
   const [profiles, setProfiles] = useState<StudentIEPProfile[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [logs, setLogs] = useState<ProgressLogEntry[]>([]);
   const [materials, setMaterials] = useState<GeneratedMaterial[]>([]);
+  const [planningSessions, setPlanningSessions] = useState<PlanningSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
 
   // Modals & Drawers state
   const [showPlaafp, setShowPlaafp] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
+  const [showPlanning, setShowPlanning] = useState(false);
+  const [resumeSession, setResumeSession] = useState<PlanningSession | undefined>(undefined);
 
   // Generator & Viewer Modal state
   const [generatorGoal, setGeneratorGoal] = useState<IEPGoal | undefined>(undefined);
@@ -62,6 +85,14 @@ export default function DashboardPage() {
   // Load profiles from IndexedDB
   const loadProfiles = useCallback(async () => {
     await seedIfEmpty();
+    // Purge orphaned "generating" placeholders from interrupted sessions.
+    // Non-fatal — never let it block the dashboard from loading.
+    try {
+      const purged = await cleanupStaleMaterials();
+      if (purged > 0) console.info(`[SE 3000] Cleared ${purged} interrupted generation(s).`);
+    } catch (err) {
+      console.warn("[SE 3000] Stale material cleanup failed:", err);
+    }
     const all = await db.profiles.toArray();
     setProfiles(all);
     if (all.length > 0 && !selectedId) {
@@ -72,7 +103,7 @@ export default function DashboardPage() {
   // Load logs and generated materials for selected student
   const loadStudentData = useCallback(async () => {
     if (!selectedId) return;
-    const [studentLogs, studentMaterials] = await Promise.all([
+    const [studentLogs, studentMaterials, sessions] = await Promise.all([
       db.progressLogs
         .where("[profileId+goalId]")
         .between([selectedId, ""], [selectedId, "\uffff"])
@@ -82,14 +113,26 @@ export default function DashboardPage() {
         .equals(selectedId)
         .reverse()
         .sortBy("createdAt"),
+      getPlanningSessionsForProfile(selectedId),
     ]);
 
     setLogs(studentLogs);
     setMaterials(studentMaterials);
+    setPlanningSessions(sessions);
   }, [selectedId]);
 
   useEffect(() => {
-    loadProfiles().finally(() => setLoading(false));
+    loadProfiles()
+      .catch((err) => {
+        console.error("[SE 3000] Failed to initialize local database:", err);
+        const msg = err instanceof Error ? err.message : String(err);
+        setInitError(
+          /indexeddb|not supported|access|denied|quota/i.test(msg)
+            ? "This browser is blocking local storage (IndexedDB). Open the app in a normal (non-private) window and allow site data."
+            : "Could not load the local database. Your browser may be blocking storage, or the stored data may be corrupted."
+        );
+      })
+      .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -117,6 +160,22 @@ export default function DashboardPage() {
     setShowGenerator(true);
   }
 
+  async function handlePlanningChanged() {
+    const all = await db.profiles.toArray();
+    setProfiles(all);
+    await loadStudentData();
+  }
+
+  function handleStartPlanning() {
+    setResumeSession(undefined);
+    setShowPlanning(true);
+  }
+
+  function handleResumePlanning(session: PlanningSession) {
+    setResumeSession(session);
+    setShowPlanning(true);
+  }
+
   function handleMaterialCreated(mat: GeneratedMaterial) {
     setShowGenerator(false);
     loadStudentData();
@@ -132,6 +191,26 @@ export default function DashboardPage() {
           <p className="text-sm font-semibold tracking-wide text-indigo-200">
             Loading SE 3000 Platform…
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (initError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white p-6">
+        <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-2xl p-6 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-300 flex items-center justify-center mx-auto">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <h1 className="text-lg font-bold text-white">Local storage unavailable</h1>
+          <p className="text-sm text-slate-300">{initError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -163,10 +242,18 @@ export default function DashboardPage() {
             {selectedProfile && (
               <>
                 <button
-                  onClick={() => handleOpenGenerator()}
+                  onClick={handleStartPlanning}
                   className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl shadow-md shadow-indigo-500/20 active:scale-95 transition-all"
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
+                  <ClipboardList className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Planning Assistant</span>
+                </button>
+
+                <button
+                  onClick={() => handleOpenGenerator()}
+                  className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                   <span className="hidden sm:inline">AI Materials Hub</span>
                 </button>
 
@@ -272,9 +359,21 @@ export default function DashboardPage() {
               showPlaafp={showPlaafp}
               onTogglePlaafp={() => setShowPlaafp(!showPlaafp)}
               onOpenGenerator={() => handleOpenGenerator()}
+              onOpenPlanning={handleStartPlanning}
             />
 
-            {/* 2. IEP Goals Grid Section */}
+            {/* 2. Instructional Planning Assistant Section */}
+            <PlanningSessionsSection
+              profile={selectedProfile}
+              sessions={planningSessions}
+              allLogs={logs}
+              onStartNew={handleStartPlanning}
+              onResume={handleResumePlanning}
+              onChanged={handlePlanningChanged}
+              onOpenMaterial={(mat) => setViewingMaterial(mat)}
+            />
+
+            {/* 3. IEP Goals Grid Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -360,7 +459,7 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* 3. Generated Teaching Materials Gallery Section */}
+            {/* 4. Generated Teaching Materials Gallery Section */}
             <div id="materials-gallery-section">
               <MaterialsGallery
                 profile={selectedProfile}
@@ -371,7 +470,7 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* 4. Mandated Services & Accommodations Grid */}
+            {/* 5. Mandated Services & Accommodations Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <ServiceTracker profile={selectedProfile} />
               <AccommodationList profile={selectedProfile} />
@@ -394,51 +493,67 @@ export default function DashboardPage() {
       )}
 
       {/* Interactive Material Viewer Dialog */}
-      {viewingMaterial && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-4xl max-h-[95vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
-            {viewingMaterial.type === "slide_deck" && (
-              <SlideDeckViewer
-                content={JSON.parse(viewingMaterial.contentJson || "{}")}
-                onClose={() => setViewingMaterial(null)}
-              />
-            )}
-            {viewingMaterial.type === "board_game" && (
-              <BoardGameViewer
-                content={JSON.parse(viewingMaterial.contentJson || "{}")}
-                onClose={() => setViewingMaterial(null)}
-              />
-            )}
-            {viewingMaterial.type === "mini_game" && (
-              <MiniGamePlayer
-                content={JSON.parse(viewingMaterial.contentJson || "{}")}
-                profileId={selectedProfile?.id}
-                goalId={viewingMaterial.goalId}
-                onObservationLogged={handleLogAdded}
-                onClose={() => setViewingMaterial(null)}
-              />
-            )}
-            {viewingMaterial.type === "music" && (
-              <AudioMusicPlayer
-                content={JSON.parse(viewingMaterial.contentJson || "{}")}
-                onClose={() => setViewingMaterial(null)}
-              />
-            )}
-            {viewingMaterial.type === "narration" && (
-              <NarrationPlayer
-                content={JSON.parse(viewingMaterial.contentJson || "{}")}
-                onClose={() => setViewingMaterial(null)}
-              />
-            )}
-            {viewingMaterial.type === "video_clip" && (
-              <VideoPlayer
-                content={JSON.parse(viewingMaterial.contentJson || "{}")}
-                onClose={() => setViewingMaterial(null)}
-              />
-            )}
+      {viewingMaterial && ((mat: GeneratedMaterial) => {
+        const parsed = safeParseContent(mat.contentJson);
+        const isViewable = mat.status === "ready" && parsed !== null;
+        return (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-4xl max-h-[95vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+              {!isViewable ? (
+                <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 text-center space-y-3 text-white">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-300 flex items-center justify-center mx-auto">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold">This material can&apos;t be opened</h3>
+                  <p className="text-sm text-slate-300">
+                    {mat.status === "generating"
+                      ? "This item is still generating, or generation was interrupted."
+                      : mat.status === "error"
+                      ? mat.error || "Generation failed for this item."
+                      : "Its saved content is missing or corrupted. Try deleting it and generating a new one."}
+                  </p>
+                  <button
+                    onClick={() => setViewingMaterial(null)}
+                    className="mt-1 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {mat.type === "slide_deck" && (
+                    <SlideDeckViewer content={parsed} onClose={() => setViewingMaterial(null)} />
+                  )}
+                  {mat.type === "board_game" && (
+                    <BoardGameViewer content={parsed} onClose={() => setViewingMaterial(null)} />
+                  )}
+                  {mat.type === "mini_game" && (
+                    <MiniGamePlayer
+                      content={parsed}
+                      profileId={selectedProfile?.id}
+                      goalId={mat.goalId}
+                      onObservationLogged={handleLogAdded}
+                      onClose={() => setViewingMaterial(null)}
+                    />
+                  )}
+                  {mat.type === "music" && (
+                    <AudioMusicPlayer content={parsed} onClose={() => setViewingMaterial(null)} />
+                  )}
+                  {mat.type === "narration" && (
+                    <NarrationPlayer content={parsed} onClose={() => setViewingMaterial(null)} />
+                  )}
+                  {mat.type === "video_clip" && (
+                    <VideoPlayer content={parsed} onClose={() => setViewingMaterial(null)} />
+                  )}
+                  {mat.type === "worksheet" && (
+                    <WorksheetViewer content={parsed} onClose={() => setViewingMaterial(null)} />
+                  )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })(viewingMaterial)}
 
       {/* Progress Summary Report Modal */}
       {showSummary && selectedProfile && (
@@ -463,6 +578,22 @@ export default function DashboardPage() {
           profile={selectedProfile}
           onClose={() => setShowAddGoal(false)}
           onGoalAdded={handleGoalAdded}
+        />
+      )}
+
+      {/* Instructional Planning Assistant */}
+      {showPlanning && selectedProfile && (
+        <PlanningAssistantModal
+          key={resumeSession?.id ?? "new"}
+          profile={selectedProfile}
+          allLogs={logs}
+          resumeSession={resumeSession}
+          onClose={() => {
+            setShowPlanning(false);
+            setResumeSession(undefined);
+          }}
+          onChanged={handlePlanningChanged}
+          onOpenMaterial={(mat) => setViewingMaterial(mat)}
         />
       )}
     </div>

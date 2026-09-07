@@ -93,6 +93,18 @@ export interface IEPGoal {
   trialsDenominator?: number;          // e.g. 5 for "4 out of 5 trials"
   reviewDate: string;                  // ISO date — mastery deadline
   createdAt: string;
+
+  // ── Optional rich fields populated when the goal comes from the Planning
+  //    Assistant (Present Level → Skill Gap → Recommended Goal). All optional so
+  //    hand-entered goals and AddGoalForm are unaffected.
+  targetSkill?: string;
+  baselineStatement?: string;          // narrative baseline description
+  measurementCriteria?: string;        // how progress is measured
+  masteryCriteria?: string;            // what counts as mastered
+  progressMonitoringMethod?: string;   // e.g. "weekly curriculum-based probes"
+  shortTermObjectives?: ShortTermObjective[];
+  instructionalLevel?: string;         // level the goal was individualized to
+  sourcePlanId?: string;               // FK → PlanningSession.id
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -153,7 +165,8 @@ export type MaterialType =
   | "mini_game"
   | "music"
   | "narration"
-  | "video_clip";
+  | "video_clip"
+  | "worksheet";
 
 export type GenerationStatus =
   | "pending"
@@ -367,4 +380,191 @@ export interface VideoContent {
   hasNarration: boolean;
   hasMusic: boolean;
   modelUsed: string;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// AI Special Education Instructional Planning Assistant
+//
+// Workflow:
+//   Present Level → Skill Gap → IEP Goal → Accommodations/Modifications →
+//   Differentiated Lesson → Worksheet/Homework → Assessment → Progress Data →
+//   AI Analysis → Adjusted Instruction
+// ────────────────────────────────────────────────────────────────────────────
+
+// ── Stage 1: raw present-level data entered / uploaded by the teacher ────────
+export interface PresentLevelInput {
+  subjectArea: string;                 // e.g. "Mathematics", "Reading"
+  currentGradeLevel: string;           // e.g. "5th"
+  currentInstructionalLevel: string;   // e.g. "early 3rd grade computation"
+  currentAcademicSkills: string;
+  areasOfStrength: string;
+  areasOfWeakness: string;
+  assessmentResults: string;
+  classroomPerformance: string;
+  previousGoalsAndProgress: string;
+  teacherObservations: string;
+  rawNotes?: string;                   // pasted text / extracted document text
+}
+
+// ── Stage 1: AI analysis output — answers the four required questions ───────
+export interface SkillGapAnalysis {
+  canDoNow: string[];                  // What can the student currently do?
+  needsToImprove: string[];            // What skills does the student need to improve?
+  distanceFromGradeLevel: string;      // How far from grade-level expectations?
+  targetSkill: string;                 // Specific academic skill to target in the IEP
+  prioritizedSkillGaps: string[];      // Ordered list of gaps, most urgent first
+}
+
+export interface PLAAFPAnalysis {
+  plaafpStatement: string;             // generated PLAAFP narrative
+  skillGaps: SkillGapAnalysis;
+  subjectArea: string;
+  instructionalLevel: string;
+}
+
+// ── Stage 2: recommended measurable, individualized annual IEP goal ────────
+export interface ShortTermObjective {
+  order: number;
+  text: string;
+  targetDate?: string;                 // ISO date, if benchmarked
+}
+
+export interface RecommendedIEPGoal {
+  targetSkill: string;
+  baselineStatement: string;           // narrative baseline
+  baselineValue: number;
+  annualGoalText: string;              // the measurable annual goal statement
+  category: GoalCategory;
+  measurementUnit: MeasurementUnit;
+  targetValue: number;
+  trialsDenominator?: number;
+  measurementCriteria: string;         // how progress is measured
+  masteryCriteria: string;             // what counts as mastered
+  progressMonitoringMethod: string;    // e.g. "weekly curriculum-based probes"
+  shortTermObjectives: ShortTermObjective[];
+  rationale: string;                   // why it is set to the instructional level
+}
+
+// ── Stage 4: scaffolded instructional unit (lesson sequence) ──────────────
+export interface InstructionalUnitStep {
+  order: number;
+  title: string;                       // e.g. "Review prerequisite skills"
+  objective: string;
+  activities: string[];
+  scaffolds: string[];                 // supports for the current instructional level
+  accommodationsApplied: string[];     // which accommodations this step builds in
+  checkForUnderstanding: string;
+}
+
+export interface InstructionalUnitContent {
+  title: string;
+  targetSkill: string;
+  instructionalLevel: string;
+  theme: string;                       // student interest woven through the unit
+  accommodationsSummary: string[];
+  steps: InstructionalUnitStep[];
+  masteryAssessment: string;
+}
+
+// ── Stage 5: differentiated worksheets & homework ────────────────────────
+export type WorksheetPurpose =
+  | "practice"
+  | "guided_practice"
+  | "independent_practice"
+  | "homework"
+  | "exit_ticket"
+  | "quiz"
+  | "progress_monitoring"
+  | "review";
+
+export type WorksheetQuestionType =
+  | "multiple_choice"
+  | "short_answer"
+  | "fill_in_blank"
+  | "matching"
+  | "word_problem"
+  | "mixed";
+
+export type ScaffoldingLevel = "none" | "light" | "moderate" | "heavy";
+
+export interface WorksheetSpec {
+  purpose: WorksheetPurpose;
+  numQuestions: number;
+  difficultyLevel: number;             // 1–5, ramps up as the student demonstrates mastery
+  questionType: WorksheetQuestionType;
+  readingLevel: string;
+  scaffolding: ScaffoldingLevel;
+  includeAnswerKey: boolean;
+  includeVisualSupports: boolean;
+  modifiedProblems: boolean;           // reduced complexity / modified assignment
+  printable: boolean;
+}
+
+export interface WorksheetItem {
+  number: number;
+  prompt: string;
+  type: WorksheetQuestionType;
+  choices?: string[];
+  answer: string;
+  workingSpace?: boolean;              // render blank work area under the item
+  scaffold?: string;                   // hint / worked step shown when scaffolding is on
+  visualSupport?: string;              // description of an icon / diagram / manipulative
+}
+
+export interface WorksheetAnswerKeyEntry {
+  number: number;
+  answer: string;
+  explanation?: string;
+}
+
+export interface WorksheetContent {
+  title: string;
+  purpose: WorksheetPurpose;
+  targetSkill: string;
+  instructionalLevel: string;
+  readingLevel: string;
+  difficultyLevel: number;
+  theme: string;
+  instructions: string;
+  accommodationsApplied: string[];
+  items: WorksheetItem[];
+  answerKey: WorksheetAnswerKeyEntry[];
+  teacherNotes: string;
+  printable: boolean;
+}
+
+// ── Stage 6: progress analysis toward the IEP goal ──────────────────────
+export interface ProgressAnalysis {
+  goalId: string;
+  observations: number;
+  currentAccuracy: number | null;      // latest value, normalized to the goal's unit
+  averageAccuracy: number | null;
+  masteryPercent: number | null;       // progress from baseline toward target, %
+  trendStatus: TrendStatus;
+  projectedValue: number | null;
+  strugglingAreas: string[];
+  nextInstructionalStep: string;
+  recommendedDifficultyLevel: number;  // 1–5, feeds the next worksheet
+  adequateProgress: boolean;
+  narrative: string;
+  createdAt: string;
+}
+
+// ── Root planning document stored in IndexedDB ──────────────────────────
+export type PlanningSessionStatus = "draft" | "goal_committed" | "active";
+
+export interface PlanningSession {
+  id: string;
+  profileId: string;                   // FK → StudentIEPProfile.id
+  goalId?: string;                     // FK → IEPGoal.id, set once the goal is committed
+  subjectArea: string;
+  status: PlanningSessionStatus;
+  input: PresentLevelInput;
+  plaafp?: PLAAFPAnalysis;
+  recommendedGoal?: RecommendedIEPGoal;
+  accommodationsSelected: string[];    // snapshot of accommodation texts to apply
+  instructionalUnit?: InstructionalUnitContent;
+  progressAnalyses: ProgressAnalysis[];// appended over time (Stage 6)
+  createdAt: string;
+  updatedAt: string;
 }

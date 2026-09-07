@@ -8,7 +8,9 @@ import type {
   ProgressLogEntry,
   MaterialType,
   GeneratedMaterial,
-  MiniGameEngineType
+  MiniGameEngineType,
+  WorksheetSpec,
+  PLAAFPAnalysis
 } from "@/types/iep";
 import { buildGenerationContext } from "./generators/context";
 
@@ -20,6 +22,8 @@ export interface GenerateOptions {
   narrationVoice?: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
   narrationSpeed?: number;
   narrationText?: string;
+  worksheetSpec?: WorksheetSpec;
+  plaafp?: PLAAFPAnalysis;
 }
 
 export async function generateAndSaveMaterial(
@@ -77,6 +81,22 @@ export async function generateAndSaveMaterial(
     case "video_clip":
       endpoint = "/api/generate/video";
       break;
+    case "worksheet":
+      endpoint = "/api/generate/worksheet";
+      payload.spec = options.worksheetSpec || {
+        purpose: "practice",
+        numQuestions: 8,
+        difficultyLevel: 2,
+        questionType: "mixed",
+        readingLevel: profile.learningProfile?.readingLevel || "Grade level",
+        scaffolding: "moderate",
+        includeAnswerKey: true,
+        includeVisualSupports: true,
+        modifiedProblems: false,
+        printable: true,
+      };
+      payload.plaafp = options.plaafp;
+      break;
   }
 
   try {
@@ -94,6 +114,11 @@ export async function generateAndSaveMaterial(
     const data = await res.json();
     const content = data.content;
 
+    const worksheetDescription =
+      type === "worksheet" && content.targetSkill
+        ? `${content.items?.length ?? "?"}-item ${String(content.purpose || "practice").replace(/_/g, " ")} · Difficulty ${content.difficultyLevel ?? "?"}/5 · ${content.targetSkill}`
+        : null;
+
     const readyRecord: GeneratedMaterial = {
       id: materialId,
       profileId: profile.id,
@@ -101,7 +126,7 @@ export async function generateAndSaveMaterial(
       type,
       status: "ready",
       title: content.title || content.gameTitle || `${type.replace("_", " ")} Resource`,
-      description: content.topic || content.instructions || content.objective || `Personalized ${type.replace("_", " ")} resource for ${profile.studentInitials}`,
+      description: worksheetDescription || content.topic || content.instructions || content.objective || `Personalized ${type.replace("_", " ")} resource for ${profile.studentInitials}`,
       promptUsed: options.customPrompt || `Generated with ${type} engine`,
       modelUsed: data.modelUsed || "se-3000-engine",
       generationCostEstimate: data.costEstimate || 0,
@@ -129,6 +154,30 @@ export async function deleteMaterial(materialId: string): Promise<void> {
     await db.generatedMaterials.delete(materialId);
     await db.materialBlobs.where("materialId").equals(materialId).delete();
   });
+}
+
+/**
+ * Remove orphaned "generating" placeholder records left behind when a
+ * generation request was interrupted (tab closed, navigation, hard reload).
+ * Generation only runs within a live page session, so any such record found
+ * on load is stale. Returns the number of records purged.
+ */
+export async function cleanupStaleMaterials(): Promise<number> {
+  const stale = await db.generatedMaterials
+    .where("status")
+    .equals("generating")
+    .toArray();
+
+  if (stale.length === 0) return 0;
+
+  await db.transaction("rw", db.generatedMaterials, db.materialBlobs, async () => {
+    for (const m of stale) {
+      await db.generatedMaterials.delete(m.id);
+      await db.materialBlobs.where("materialId").equals(m.id).delete();
+    }
+  });
+
+  return stale.length;
 }
 
 export async function getMaterialsForProfile(profileId: string): Promise<GeneratedMaterial[]> {

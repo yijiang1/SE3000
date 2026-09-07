@@ -10,7 +10,9 @@ import type {
   BoardGameContent,
   MusicContent,
   NarrationContent,
-  VideoContent
+  VideoContent,
+  PlanningSession,
+  WorksheetContent
 } from "@/types/iep";
 import { v4 as uuidv4 } from "uuid";
 
@@ -607,6 +609,241 @@ export const seedMaterials: GeneratedMaterial[] = [
   }
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Instructional Planning Assistant — sample planning session for JD (Mathematics)
+// Present Level → PLAAFP → Recommended Goal (= jdGoal2Id) → Accommodations →
+// Instructional Unit → one Progress Analysis. Demonstrates the full loop offline.
+// ─────────────────────────────────────────────────────────────────────────────
+export const jdPlanId = "seed-plan-jd-math";
+
+const sampleWorksheet: WorksheetContent = {
+  title: "Dino Dig Guided Practice — Multi-Step Word Problems",
+  purpose: "guided_practice",
+  targetSkill: "solving multi-step word problems",
+  instructionalLevel: "2-step word problems with numbers under 20",
+  readingLevel: "Early 2nd Grade (decoding vowel digraphs, needs chunked passages)",
+  difficultyLevel: 2,
+  theme: "Dinosaurs & Fossil Excavation",
+  instructions: "Solve each fossil-dig problem. Show both steps in the space provided. Use the hint if you get stuck.",
+  accommodationsApplied: [
+    "Chunked reading passages with visual breaks",
+    "Extended time (1.5×) on all assessments",
+    "Graphic organizers for writing tasks",
+  ],
+  items: [
+    {
+      number: 1,
+      prompt: "JD digs up 3 fossil kits with 2 bones in each kit, then finds 2 more bones. How many bones in all? Show each step.",
+      type: "word_problem",
+      answer: "3 × 2 = 6; 6 + 2 = 8",
+      workingSpace: true,
+      scaffold: "Step 1: multiply 2 × 3. Step 2: add 2 to that product.",
+      visualSupport: "3 groups of 2 dots, plus 2 loose dots.",
+    },
+    {
+      number: 2,
+      prompt: "A dig site has 4 crates with 3 fossils in each crate, plus 1 extra fossil found on the trail. How many fossils in all?",
+      type: "word_problem",
+      answer: "4 × 3 = 12; 12 + 1 = 13",
+      workingSpace: true,
+      scaffold: "Step 1: multiply 3 × 4. Step 2: add 1 to that product.",
+      visualSupport: "4 groups of 3 dots, plus 1 loose dot.",
+    },
+    {
+      number: 3,
+      prompt: "JD packs 2 backpacks with 4 fossils in each, then adds 3 more fossils he found. How many fossils in all?",
+      type: "word_problem",
+      answer: "2 × 4 = 8; 8 + 3 = 11",
+      workingSpace: true,
+      scaffold: "Step 1: multiply 4 × 2. Step 2: add 3 to that product.",
+      visualSupport: "2 groups of 4 dots, plus 3 loose dots.",
+    },
+    {
+      number: 4,
+      prompt: "There are 3 dig teams with 3 fossils each, and the lead paleontologist finds 4 more. How many fossils in all?",
+      type: "word_problem",
+      answer: "3 × 3 = 9; 9 + 4 = 13",
+      workingSpace: true,
+      scaffold: "Step 1: multiply 3 × 3. Step 2: add 4 to that product.",
+      visualSupport: "3 groups of 3 dots, plus 4 loose dots.",
+    },
+    {
+      number: 5,
+      prompt: "JD sorts 5 trays with 2 fossils on each tray, then finds 1 more fossil in the sand. How many fossils in all?",
+      type: "word_problem",
+      answer: "5 × 2 = 10; 10 + 1 = 11",
+      workingSpace: true,
+      scaffold: "Step 1: multiply 2 × 5. Step 2: add 1 to that product.",
+      visualSupport: "5 groups of 2 dots, plus 1 loose dot.",
+    },
+    {
+      number: 6,
+      prompt: "A museum case holds 2 shelves with 5 fossils each, plus 2 fossils on display outside the case. How many fossils in all?",
+      type: "word_problem",
+      answer: "2 × 5 = 10; 10 + 2 = 12",
+      workingSpace: true,
+      scaffold: "Step 1: multiply 5 × 2. Step 2: add 2 to that product.",
+      visualSupport: "2 groups of 5 dots, plus 2 loose dots.",
+    },
+  ],
+  answerKey: [
+    { number: 1, answer: "8", explanation: "3 × 2 = 6, then 6 + 2 = 8" },
+    { number: 2, answer: "13", explanation: "4 × 3 = 12, then 12 + 1 = 13" },
+    { number: 3, answer: "11", explanation: "2 × 4 = 8, then 8 + 3 = 11" },
+    { number: 4, answer: "13", explanation: "3 × 3 = 9, then 9 + 4 = 13" },
+    { number: 5, answer: "11", explanation: "5 × 2 = 10, then 10 + 1 = 11" },
+    { number: 6, answer: "12", explanation: "2 × 5 = 10, then 10 + 2 = 12" },
+  ],
+  teacherNotes:
+    "Difficulty level 2/5, pitched at 2-step word problems with numbers under 20. Score as percent accuracy and log to the IEP goal. If JD reaches 80%+ across two sessions, raise to difficulty 3 (numbers under 30); if below 60%, drop to difficulty 1 and reteach the multiplication step with manipulatives.",
+  printable: true,
+};
+
+const seedPlanningSessionJD: PlanningSession = {
+  id: jdPlanId,
+  profileId: jdId,
+  goalId: jdGoal2Id,
+  subjectArea: "Mathematics",
+  status: "active",
+  input: {
+    subjectArea: "Mathematics",
+    currentGradeLevel: "3rd",
+    currentInstructionalLevel: "1st-2nd grade multi-step word problems with manipulatives",
+    currentAcademicSkills:
+      "Adds and subtracts within 20 using manipulatives; recognizes multiplication as repeated addition with support.",
+    areasOfStrength: "Strong verbal reasoning; enjoys hands-on problem solving; persists with visual supports.",
+    areasOfWeakness:
+      "Struggles to identify which operations to use in a multi-step word problem; often stops after the first step.",
+    assessmentResults:
+      "District math CBM: 3 out of 10 multi-step word problems correct unprompted (30%). Grade-level benchmark is 8/10.",
+    classroomPerformance:
+      "Completes single-step computation independently but needs teacher prompting to continue to a second step on word problems.",
+    previousGoalsAndProgress:
+      "No prior formal math problem-solving goal; addition/subtraction fluency goal was met last year.",
+    teacherObservations:
+      "JD talks through dinosaur-themed problems more successfully than generic ones and benefits from drawing the groups before solving.",
+    rawNotes: "",
+  },
+  plaafp: {
+    plaafpStatement:
+      "JD is a 3rd-grade student receiving special education services. In Mathematics, JD currently performs at 1st-2nd grade multi-step word problems with manipulatives. JD is able to add and subtract within 20 using manipulatives; recognize multiplication as repeated addition with support; work with hands-on materials with strong persistence. In the classroom, JD completes single-step computation independently but needs teacher prompting to continue to a second step on word problems. Areas of need include identifying which operations to use in a multi-step word problem; continuing past the first step without prompting. Assessment results: District math CBM: 3 out of 10 multi-step word problems correct unprompted (30%); grade-level benchmark is 8/10. Teacher observations note that JD talks through dinosaur-themed problems more successfully than generic ones and benefits from drawing the groups before solving. This present level of performance establishes the baseline for a measurable annual goal targeting solving multi-step word problems.",
+    subjectArea: "Mathematics",
+    instructionalLevel: "1st-2nd grade multi-step word problems with manipulatives",
+    skillGaps: {
+      canDoNow: [
+        "Add and subtract within 20 using manipulatives",
+        "Recognize multiplication as repeated addition with support",
+        "Complete single-step computation independently",
+      ],
+      needsToImprove: [
+        "Identify which operations a multi-step word problem requires",
+        "Continue to a second step without teacher prompting",
+        "Check work against the question being asked",
+      ],
+      distanceFromGradeLevel:
+        "JD is working roughly one to two grade levels below the 3rd-grade expectation for multi-step word problems, completing 30% unprompted versus an 80% grade-level benchmark.",
+      targetSkill: "solving multi-step word problems",
+      prioritizedSkillGaps: [
+        "Identify which operations a multi-step word problem requires",
+        "Continue to a second step without teacher prompting",
+        "Check work against the question being asked",
+      ],
+    },
+  },
+  recommendedGoal: {
+    targetSkill: "solving multi-step word problems",
+    baselineStatement: "JD currently performs solving multi-step word problems at approximately 30% accuracy at 1st-2nd grade multi-step word problems with manipulatives (per District math CBM: 3/10 unprompted).",
+    baselineValue: 3,
+    annualGoalText:
+      "JD will solve multi-step word problems independently, completing at least 7 out of 10 problems correctly in 4 of 5 sessions, as measured by weekly curriculum-based measurement (CBM) computation/application probes at the instructional level.",
+    category: "academic",
+    measurementUnit: "count",
+    targetValue: 7,
+    trialsDenominator: 10,
+    measurementCriteria:
+      "Progress is measured by weekly curriculum-based measurement (CBM) computation/application probes at the instructional level. Each data point is scored as the number correct out of a 10-item instructional-level probe.",
+    masteryCriteria: "7 out of 10 problems correct across 4 of 5 consecutive weekly probes.",
+    progressMonitoringMethod: "Weekly curriculum-based measurement (CBM) computation/application probes at the instructional level.",
+    shortTermObjectives: [
+      { order: 1, text: "By the end of quarter 1, JD will solve 1-step word problems with 80% accuracy in 3 of 4 sessions, with modeling and guided practice faded across the quarter." },
+      { order: 2, text: "By the end of quarter 2, JD will solve 2-step word problems scoring 5/10 on instructional-level probes in 3 of 4 sessions." },
+      { order: 3, text: "By the end of quarter 3, JD will solve 2-step word problems scoring 6/10 on instructional-level probes in 3 of 4 sessions." },
+      { order: 4, text: "By the end of quarter 4, JD will independently solve multi-step word problems scoring 7/10 across 4 of 5 consecutive probes (annual goal met)." },
+    ],
+    rationale:
+      "The target and pacing are set to JD's current instructional level (1st-2nd grade multi-step word problems with manipulatives) and a realistic rate of improvement from the 30% baseline, rather than to the 3rd-grade standard. This keeps the goal ambitious but attainable and directly tied to the prioritized skill gap: identifying which operations a multi-step word problem requires.",
+  },
+  accommodationsSelected: [
+    "Chunked reading passages with visual breaks",
+    "Extended time (1.5×) on all assessments",
+    "Graphic organizers for writing tasks",
+    "Preferential seating near instruction",
+  ],
+  instructionalUnit: {
+    title: "Dinosaurs Multi-Step Word Problems Unit — built for JD",
+    targetSkill: "solving multi-step word problems",
+    instructionalLevel: "1st-2nd grade multi-step word problems with manipulatives",
+    theme: "Dinosaurs & Fossil Excavation",
+    accommodationsSummary: [
+      "Chunked reading passages with visual breaks",
+      "Extended time (1.5×) on all assessments",
+      "Graphic organizers for writing tasks",
+      "Preferential seating near instruction",
+    ],
+    steps: [
+      { order: 1, title: "Review prerequisite skills", objective: "Recall addition and subtraction facts within 20 using manipulatives.", activities: ["Warm-up: fossil-counting fact fluency drill (10 items).", "Mini-lesson: review fact families with dinosaur counters."], scaffolds: ["Manipulatives (dino counters) on every problem", "Anchor chart of fact families left visible"], accommodationsApplied: ["Chunked reading passages with visual breaks", "Preferential seating near instruction"], checkForUnderstanding: "Exit check: 5 fact-family items; advance when JD reaches 80% across 2 sessions." },
+      { order: 2, title: "Identify the question being asked", objective: "Underline the question sentence in a word problem and restate it in JD's own words.", activities: ["Read a fossil-dig problem aloud together, chunked sentence by sentence.", "JD underlines the question sentence and circles the numbers."], scaffolds: ["Sentence strips separated by chunk", "Question-word anchor chart (how many, in all, altogether)"], accommodationsApplied: ["Chunked reading passages with visual breaks", "Graphic organizers for writing tasks"], checkForUnderstanding: "Exit check: 3 problems, correctly underline the question; advance at 80% across 2 sessions." },
+      { order: 3, title: "Model with a think-aloud (I do)", objective: "Demonstrate solving a 2-step fossil problem step by step, narrating each decision.", activities: ["Teacher models drawing groups of fossils, then adding an extra amount.", "Teacher narrates: 'First I multiply, then I add.'"], scaffolds: ["Two-step graphic organizer (Step 1 box, Step 2 box)", "Worked example posted on the anchor chart"], accommodationsApplied: ["Graphic organizers for writing tasks", "Extended time (1.5×) on all assessments"], checkForUnderstanding: "JD retells the two steps aloud in his own words." },
+      { order: 4, title: "Guided practice (we do)", objective: "Solve 2-step problems together, releasing responsibility as accuracy rises.", activities: ["Complete 4 fossil-dig problems together using the two-step organizer.", "JD fills in Step 1 with support, attempts Step 2 independently."], scaffolds: ["Two-step graphic organizer", "Dino counters available for every problem"], accommodationsApplied: ["Graphic organizers for writing tasks", "Preferential seating near instruction"], checkForUnderstanding: "Exit check: 3 guided items; advance when JD completes Step 2 with 1 or fewer prompts." },
+      { order: 5, title: "Structured independent practice (you do)", objective: "Solve 2-step fossil word problems independently at 80% accuracy.", activities: ["Independent practice set: 6 problems using the two-step organizer.", "JD self-checks each answer against the question."], scaffolds: ["Two-step graphic organizer available but optional", "Checklist: 'Did I answer the question?'"], accommodationsApplied: ["Extended time (1.5×) on all assessments", "Graphic organizers for writing tasks"], checkForUnderstanding: "Score independent set; advance when JD reaches 80% across 2 sessions." },
+      { order: 6, title: "Apply to new problem types", objective: "Transfer the two-step strategy to subtraction-then-addition and addition-then-subtraction problems.", activities: ["Solve mixed-operation fossil problems (not just multiply-then-add).", "Discuss how the strategy still applies: find Step 1, then Step 2."], scaffolds: ["Two-step graphic organizer", "Operation-choice anchor chart"], accommodationsApplied: ["Graphic organizers for writing tasks", "Chunked reading passages with visual breaks"], checkForUnderstanding: "Exit check: 4 mixed-operation items at 75%+ accuracy." },
+      { order: 7, title: "Generalize and self-monitor", objective: "Solve multi-step problems in a new format (oral, written, digital) and self-check with a rubric.", activities: ["Solve a problem read aloud without the printed organizer, using self-talk.", "JD scores his own work with a 3-point checklist rubric."], scaffolds: ["Self-talk sentence frames ('First I..., then I...')", "3-point self-check rubric card"], accommodationsApplied: ["Preferential seating near instruction", "Extended time (1.5×) on all assessments"], checkForUnderstanding: "JD independently self-scores 2 problems with 90%+ agreement with teacher scoring." },
+      { order: 8, title: "Review and assess mastery", objective: "Complete a 10-item progress-monitoring probe at the instructional level.", activities: ["Administer the weekly CBM-style probe (10 fossil-dig multi-step problems).", "Chart the score against the 7/10 goal criterion."], scaffolds: ["Two-step organizer available if needed per accommodations", "Extended time per IEP"], accommodationsApplied: ["Extended time (1.5×) on all assessments", "Graphic organizers for writing tasks"], checkForUnderstanding: "Score the progress-monitoring probe; if below 7/10, reteach the lowest step before advancing difficulty." },
+    ],
+    masteryAssessment:
+      "Cumulative probe of solving multi-step word problems at 1st-2nd grade multi-step word problems with manipulatives: 7count accuracy across 4 of 5 consecutive weekly data points signals readiness to raise difficulty or move to the next skill.",
+  },
+  progressAnalyses: [
+    {
+      goalId: jdGoal2Id,
+      observations: 8,
+      currentAccuracy: 75,
+      averageAccuracy: 56,
+      masteryPercent: 75,
+      trendStatus: "on_track",
+      projectedValue: 7.1,
+      strugglingAreas: [],
+      nextInstructionalStep:
+        "Advance: raise worksheet difficulty to level 3 and move to the next unit step. Next: Apply to new problem types: Transfer the two-step strategy to subtraction-then-addition and addition-then-subtraction problems.",
+      recommendedDifficultyLevel: 3,
+      adequateProgress: true,
+      narrative:
+        "Across 8 data points, the most recent score is 6 count (average 4.5 count) against a target of 7 count. That is about 75% of the way from baseline to target. The linear trend projects 7.1 count by the review date — status on track. Progress is adequate toward the annual goal.",
+      createdAt: daysAgo(3),
+    },
+  ],
+  createdAt: daysAgo(20),
+  updatedAt: daysAgo(3),
+};
+
+export const seedPlanningSessions: PlanningSession[] = [seedPlanningSessionJD];
+
+const seedWorksheetMaterial: GeneratedMaterial = {
+  id: "seed-mat-jd-7",
+  profileId: jdId,
+  goalId: jdGoal2Id,
+  type: "worksheet",
+  status: "ready",
+  title: sampleWorksheet.title,
+  description: `${sampleWorksheet.items.length}-item guided practice · Difficulty ${sampleWorksheet.difficultyLevel}/5 · ${sampleWorksheet.targetSkill}`,
+  promptUsed: "Generate guided-practice multi-step word problems for JD's Instructional Planning Assistant unit...",
+  modelUsed: "gemini-2.5-flash",
+  generationCostEstimate: 0.014,
+  contentJson: JSON.stringify(sampleWorksheet),
+  createdAt: daysAgo(3),
+  updatedAt: daysAgo(3),
+};
+
 // Module-level lock: prevents concurrent seed calls (React StrictMode fires effects twice)
 let seedingPromise: Promise<void> | null = null;
 
@@ -616,23 +853,53 @@ export async function seedIfEmpty() {
   seedingPromise = (async () => {
     const count = await db.profiles.count();
     if (count > 0) {
-      // Check if learningProfile is populated (migrating existing profiles if needed)
-      const existing = await db.profiles.get(jdId);
-      if (existing && !existing.learningProfile) {
-        await db.profiles.bulkPut([studentJD, studentMR]);
+      // Backfill learningProfile on any profile that predates it — including
+      // user-created students — without clobbering unrelated edits. Seed
+      // students get their canonical profile; others get a safe default.
+      const seededById: Record<string, StudentIEPProfile> = {
+        [studentJD.id]: studentJD,
+        [studentMR.id]: studentMR,
+      };
+      const allProfiles = await db.profiles.toArray();
+      for (const p of allProfiles) {
+        if (p.learningProfile) continue;
+        await db.profiles.update(p.id, {
+          learningProfile:
+            seededById[p.id]?.learningProfile ?? {
+              readingLevel: "Grade level",
+              comprehensionLevel: "Standard grade-level comprehension",
+              communicationNeeds: ["verbal"],
+              sensoryConsiderations: [],
+              interests: [],
+              preferredModality: ["visual"],
+            },
+          updatedAt: new Date().toISOString(),
+        });
       }
       const matCount = await db.generatedMaterials.count();
       if (matCount === 0) {
-        await db.generatedMaterials.bulkPut(seedMaterials);
+        await db.generatedMaterials.bulkPut([...seedMaterials, seedWorksheetMaterial]);
+      }
+      const planCount = await db.planningSessions.count();
+      if (planCount === 0) {
+        await db.planningSessions.bulkPut(seedPlanningSessions);
       }
       return;
     }
 
-    await db.transaction("rw", db.profiles, db.progressLogs, db.generatedMaterials, async () => {
-      await db.profiles.bulkPut([studentJD, studentMR]);
-      await db.progressLogs.bulkPut(seedLogs);
-      await db.generatedMaterials.bulkPut(seedMaterials);
-    });
+    await db.transaction(
+      "rw",
+      db.profiles,
+      db.progressLogs,
+      db.generatedMaterials,
+      db.planningSessions,
+      async () => {
+        await db.profiles.bulkPut([studentJD, studentMR]);
+        await db.progressLogs.bulkPut(seedLogs);
+        await db.generatedMaterials.bulkPut([...seedMaterials, seedWorksheetMaterial]);
+        await db.planningSessions.bulkPut(seedPlanningSessions);
+      }
+    );
     console.info("[SE 3000] Seed data loaded successfully.");
   })();
 
