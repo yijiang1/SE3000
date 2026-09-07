@@ -21,6 +21,9 @@ import {
   buildContextFromRecommendedGoal,
   buildGenerationContext
 } from "./generators/context";
+import { getAppSettings } from "./settings";
+import { logUsage } from "./usage";
+import type { UsageFeature } from "@/types/iep";
 
 export function emptyPresentLevelInput(partial: Partial<PresentLevelInput> = {}): PresentLevelInput {
   return {
@@ -45,17 +48,27 @@ async function persist(session: PlanningSession): Promise<PlanningSession> {
   return next;
 }
 
-async function postJson<T>(url: string, payload: unknown): Promise<T> {
+interface GenerationResponse<T> {
+  content: T;
+  modelUsed: string;
+  provider?: string;
+  costEstimate: number;
+}
+
+async function postJson<T>(url: string, payload: Record<string, unknown>, feature: UsageFeature): Promise<GenerationResponse<T>> {
+  const settings = await getAppSettings();
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, providerPreferences: settings.providerPreferences }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `Request to ${url} failed (${res.status})`);
   }
-  return (await res.json()) as T;
+  const data = (await res.json()) as GenerationResponse<T>;
+  await logUsage(feature, data.modelUsed, data.costEstimate || 0, data.provider);
+  return data;
 }
 
 export async function createPlanningSession(
@@ -89,10 +102,11 @@ export async function runPlaafpAnalysis(
   session: PlanningSession,
   profile: StudentIEPProfile
 ): Promise<PlanningSession> {
-  const { content } = await postJson<{ content: PLAAFPAnalysis }>("/api/planning/plaafp", {
-    student: buildStudentContextLite(profile),
-    input: session.input,
-  });
+  const { content } = await postJson<PLAAFPAnalysis>(
+    "/api/planning/plaafp",
+    { student: buildStudentContextLite(profile), input: session.input },
+    "plaafp"
+  );
   return persist({ ...session, plaafp: content });
 }
 
@@ -108,11 +122,11 @@ export async function runGoalRecommendation(
   profile: StudentIEPProfile
 ): Promise<PlanningSession> {
   if (!session.plaafp) throw new Error("Run the PLAAFP analysis first.");
-  const { content } = await postJson<{ content: RecommendedIEPGoal }>("/api/planning/iep-goal", {
-    student: buildStudentContextLite(profile),
-    plaafp: session.plaafp,
-    input: session.input,
-  });
+  const { content } = await postJson<RecommendedIEPGoal>(
+    "/api/planning/iep-goal",
+    { student: buildStudentContextLite(profile), plaafp: session.plaafp, input: session.input },
+    "iep_goal"
+  );
   return persist({ ...session, recommendedGoal: content });
 }
 
@@ -197,9 +211,10 @@ export async function runInstructionalUnit(
 
   if (!context) throw new Error("Recommend or commit a goal before building the unit.");
 
-  const { content } = await postJson<{ content: InstructionalUnitContent }>(
+  const { content } = await postJson<InstructionalUnitContent>(
     "/api/generate/instructional-unit",
-    { context, plaafp: session.plaafp, accommodations: session.accommodationsSelected }
+    { context, plaafp: session.plaafp, accommodations: session.accommodationsSelected },
+    "instructional_unit"
   );
   return persist({ ...session, instructionalUnit: content, status: session.goalId ? "active" : session.status });
 }
@@ -210,14 +225,15 @@ export async function runProgressAnalysis(
   logs: ProgressLogEntry[],
   currentDifficultyLevel = 2
 ): Promise<{ session: PlanningSession; analysis: ProgressAnalysis }> {
-  const { content } = await postJson<{ content: ProgressAnalysis }>(
+  const { content } = await postJson<ProgressAnalysis>(
     "/api/planning/progress-analysis",
     {
       goal,
       logs: logs.filter((l) => l.goalId === goal.id),
       instructionalUnit: session.instructionalUnit,
       currentDifficultyLevel,
-    }
+    },
+    "progress_analysis"
   );
   const updated = await persist({
     ...session,

@@ -13,6 +13,8 @@ import type {
   PLAAFPAnalysis
 } from "@/types/iep";
 import { buildGenerationContext } from "./generators/context";
+import { getAppSettings } from "./settings";
+import { logUsage } from "./usage";
 
 export interface GenerateOptions {
   customPrompt?: string;
@@ -100,6 +102,9 @@ export async function generateAndSaveMaterial(
   }
 
   try {
+    const settings = await getAppSettings();
+    payload.providerPreferences = settings.providerPreferences;
+
     const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -136,6 +141,7 @@ export async function generateAndSaveMaterial(
     };
 
     await db.generatedMaterials.put(readyRecord);
+    await logUsage(type, readyRecord.modelUsed, readyRecord.generationCostEstimate || 0, data.provider);
     return readyRecord;
   } catch (err: any) {
     const errorRecord: GeneratedMaterial = {

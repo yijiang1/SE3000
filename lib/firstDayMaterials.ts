@@ -13,6 +13,8 @@ import type {
   FirstDayMaterialFormat,
   FirstDayMaterial
 } from "@/types/iep";
+import { getAppSettings } from "./settings";
+import { logUsage } from "./usage";
 
 // Family Welcome Letter has no dedicated profile of its own — it's generated
 // from the existing Teacher (+ optional Classroom) profile, bundled together.
@@ -246,6 +248,9 @@ export async function generateAndSaveFirstDayMaterial(
   const payload: any = { category, format, customPrompt: options.customPrompt, ...buildPayload(category, subject) };
 
   try {
+    const settings = await getAppSettings();
+    payload.providerPreferences = settings.providerPreferences;
+
     const res = await fetch("/api/generate/first-day", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -276,6 +281,7 @@ export async function generateAndSaveFirstDayMaterial(
     };
 
     await db.firstDayMaterials.put(readyRecord);
+    await logUsage("first_day", readyRecord.modelUsed, readyRecord.generationCostEstimate || 0, data.provider);
     return readyRecord;
   } catch (err: any) {
     const errorRecord: FirstDayMaterial = {

@@ -1,5 +1,7 @@
 // types/iep.ts — Comprehensive type definitions for SE 3000
 
+import type { ProviderPreferences } from "@/lib/ai/providers";
+
 export type GoalCategory =
   | "academic"
   | "behavioral"
@@ -687,4 +689,44 @@ export interface PlanningSession {
   progressAnalyses: ProgressAnalysis[];// appended over time (Stage 6)
   createdAt: string;
   updatedAt: string;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Settings & AI Usage Tracking
+//
+// Provider preferences are stored client-side (Dexie) and sent along with
+// each generation request; the server honors them when the corresponding
+// API key is configured, otherwise falls back down its default chain. Usage
+// log entries are written after every generation call so the Settings page
+// can show a running cost/activity summary — all local, nothing is sent
+// anywhere except the generation request itself.
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface AppSettings {
+  id: "default";
+  providerPreferences: ProviderPreferences;
+  updatedAt: string;
+}
+
+export type UsageFeature =
+  | "slide_deck"
+  | "board_game"
+  | "mini_game"
+  | "music"
+  | "narration"
+  | "video_clip"
+  | "worksheet"
+  | "plaafp"
+  | "iep_goal"
+  | "instructional_unit"
+  | "progress_analysis"
+  | "first_day";
+
+export interface UsageLogEntry {
+  id: string;
+  feature: UsageFeature;
+  provider?: string;
+  modelUsed: string;
+  costEstimate: number;
+  createdAt: string;
 }

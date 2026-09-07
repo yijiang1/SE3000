@@ -2,6 +2,7 @@
 // app/page.tsx — SE 3000 Special Education Materials & IEP Tracking Platform
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import {
   Sparkles,
   Target,
@@ -15,7 +16,8 @@ import {
   Smile,
   Users,
   Mail,
-  MessageCircleHeart
+  MessageCircleHeart,
+  Settings as SettingsIcon
 } from "lucide-react";
 import db from "@/lib/db";
 import { seedIfEmpty } from "@/lib/seed";
@@ -384,6 +386,15 @@ export default function DashboardPage() {
               <UserPlus className="w-3.5 h-3.5 text-emerald-400" />
               <span className="hidden sm:inline">Add Student</span>
             </button>
+
+            <Link
+              href="/settings"
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700"
+              title="AI Settings & Usage"
+            >
+              <SettingsIcon className="w-3.5 h-3.5 text-slate-400" />
+              <span className="hidden sm:inline">Settings</span>
+            </Link>
           </div>
         </div>
       </header>
@@ -823,40 +834,35 @@ export default function DashboardPage() {
           category="teacher_intro"
           subject={teacherProfile}
           onClose={() => setGeneratorCategory(null)}
-          onMaterialCreated={handleFirstDayMaterialCreated}
-        />
+          onMaterialCreated={handleFirstDayMaterialCreated}        />
       )}
       {generatorCategory === "classroom_expectations" && classroomProfile && (
         <FirstDayGeneratorModal
           category="classroom_expectations"
           subject={classroomProfile}
           onClose={() => setGeneratorCategory(null)}
-          onMaterialCreated={handleFirstDayMaterialCreated}
-        />
+          onMaterialCreated={handleFirstDayMaterialCreated}        />
       )}
       {generatorCategory === "icebreaker_activities" && icebreakerProfile && (
         <FirstDayGeneratorModal
           category="icebreaker_activities"
           subject={icebreakerProfile}
           onClose={() => setGeneratorCategory(null)}
-          onMaterialCreated={handleFirstDayMaterialCreated}
-        />
+          onMaterialCreated={handleFirstDayMaterialCreated}        />
       )}
       {generatorCategory === "family_letter" && teacherProfile && (
         <FirstDayGeneratorModal
           category="family_letter"
           subject={{ teacher: teacherProfile, classroom: classroomProfile }}
           onClose={() => setGeneratorCategory(null)}
-          onMaterialCreated={handleFirstDayMaterialCreated}
-        />
+          onMaterialCreated={handleFirstDayMaterialCreated}        />
       )}
       {generatorCategory === "getting_to_know_you" && surveyProfile && (
         <FirstDayGeneratorModal
           category="getting_to_know_you"
           subject={surveyProfile}
           onClose={() => setGeneratorCategory(null)}
-          onMaterialCreated={handleFirstDayMaterialCreated}
-        />
+          onMaterialCreated={handleFirstDayMaterialCreated}        />
       )}
 
       {/* First-Day Material Viewer (shared by all five categories) */}
