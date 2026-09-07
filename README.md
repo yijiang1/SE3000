@@ -112,23 +112,33 @@ npm install
 
 ### 3. Configure API Keys (Optional)
 
-The application includes built-in offline synthesizers. To connect to live Gemini and OpenAI models, create a `.env.local` file in the root directory:
+The application includes built-in offline synthesizers, so every feature works with zero keys configured. To connect live models, create a `.env.local` file in the root directory:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Add your API keys:
+`.env.example` documents every supported provider — add only the ones you have keys for:
 
-```env
-# Gemini API Key (for Lesson text, Imagen 3 illustrations, Veo 3.1 video, Lyria 3 music)
-GEMINI_API_KEY=your_gemini_api_key_here
+| Capability | Providers (tried in priority order, configurable on the **Settings** page) |
+| :--- | :--- |
+| Text generation | Google Gemini → DeepSeek → Kimi (Moonshot AI) → OpenAI |
+| Text-to-speech narration | OpenAI TTS → MiniMax Speech |
+| Real video generation | MiniMax Hailuo → Kling AI |
+| Real music generation | MiniMax Music |
 
-# OpenAI API Key (for Text-to-Speech narration and fallback text generation)
-OPENAI_API_KEY=your_openai_api_key_here
-```
+Any subset may be configured — unconfigured providers are skipped automatically, falling all the way back to the offline synthesizer if none are set.
 
-> 🔒 **Security Notice:** `.env*` files are included in `.gitignore` and are never committed. API keys are accessed strictly on the server-side via Next.js API routes.
+> 🔒 **Security Notice:** `.env*` files are included in `.gitignore` and are never committed. API keys are accessed strictly on the server-side via Next.js API routes — the browser never sees them.
+
+### AI Settings & Usage Tracking
+
+Open the **Settings** button in the top nav (or [http://localhost:3000/settings](http://localhost:3000/settings)) to:
+- Reorder each capability's provider priority (which providers actually get used still depends on which keys you've configured in `.env.local`)
+- See at a glance which providers are configured, without ever exposing key values
+- Track every generation's estimated cost, grouped by provider and by feature, with a running activity log
+
+All of this is stored locally in the browser (IndexedDB) alongside the rest of SE 3000's local-first data — nothing is sent anywhere except the generation request itself.
 
 ### 4. Run the Development Server
 
@@ -196,14 +206,15 @@ special-ed-3000/
 
 ## 🤖 AI Models & Workload Split
 
-| Capability | Model | Provider | Est. Cost / Gen |
-| :--- | :--- | :--- | :--- |
-| **Lesson & Game Structured Text** | Gemini 2.5 Flash | Google AI Studio | ~$0.01 – $0.02 |
-| **Slide Illustrations & Game Art** | Imagen 3 | Google AI Studio | ~$0.02 – $0.03 |
-| **Mnemonic Songs & Calming Audio** | Lyria 3 (Clip & Pro) | Google DeepMind | ~$0.04 – $0.08 |
-| **Animated Explainer Clips** | Veo 3.1 (Fast / Lite) | Google DeepMind | ~$0.40 / clip |
-| **Voiceover Narration (TTS)** | `tts-1` / `tts-1-hd` | OpenAI | ~$0.01 / script |
-| **Fallback Text Generation** | GPT-4o-mini | OpenAI | ~$0.01 |
+Every row below is a fallback chain, not a single hard-coded model — SE 3000 tries each provider in order (configurable on the **Settings** page) and skips any without a configured key, all the way down to an offline synthesizer.
+
+| Capability | Providers tried in order | Est. Cost / Gen |
+| :--- | :--- | :--- |
+| **Lesson & Game Structured Text** | Gemini 2.5 Flash → DeepSeek Chat → Kimi K2 → GPT-4o-mini | ~$0.003 – $0.02 |
+| **Slide Illustrations & Game Art** | Imagen 3 (Google AI Studio) | ~$0.02 – $0.03 |
+| **Mnemonic Songs & Calming Audio** | Lyria 3-style lyrics/structure (text chain above); real audio via MiniMax Music | ~$0.04 – $0.08 (text) / ~$0.05 (real audio) |
+| **Animated Explainer Clips** | Veo 3.1-style storyboard script (text chain above); real video via MiniMax Hailuo → Kling AI | ~$0.40 (script) / ~$0.35 – $0.50 (real video) |
+| **Voiceover Narration (TTS)** | OpenAI `tts-1` → MiniMax Speech (T2A v2) | ~$0.006 – $0.01 / script |
 
 ---
 
