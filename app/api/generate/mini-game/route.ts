@@ -1,9 +1,10 @@
 // app/api/generate/mini-game/route.ts — Interactive browser mini-game generator
 
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
 import type { GenerationContext, MiniGameContent, MiniGameEngineType } from "@/types/iep";
 import { formatContextForPrompt } from "@/lib/generators/context";
+import { generateJSON } from "@/lib/ai/textGen";
+import { estimateTextCost, type ProviderPreferences } from "@/lib/ai/providers";
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,12 +12,12 @@ export async function POST(req: NextRequest) {
     const ctx: GenerationContext = body.context;
     const engineType: MiniGameEngineType = body.engineType || "matching";
     const customPrompt: string | undefined = body.customPrompt;
+    const providerPreferences: ProviderPreferences | undefined = body.providerPreferences;
 
     if (!ctx || !ctx.student || !ctx.goal) {
       return NextResponse.json({ error: "Missing required generation context" }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
     const studentInterest = ctx.student.interests[0] || "Exploration";
     const promptText = `
 You are an expert Educational Game Developer and Special Education Specialist.
@@ -59,29 +60,14 @@ Respond with valid JSON matching this exact structure:
 }
 `.trim();
 
-    if (apiKey && apiKey.trim().length > 5) {
-      try {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: promptText,
-          config: {
-            responseMimeType: "application/json",
-            temperature: 0.3,
-          },
-        });
-
-        const rawText = response.text || "{}";
-        const cleanJson = rawText.replace(/```json\n?|\n?```/g, "").trim();
-        const parsed: MiniGameContent = JSON.parse(cleanJson);
-        return NextResponse.json({
-          content: parsed,
-          modelUsed: "gemini-2.5-flash",
-          costEstimate: 0.01,
-        });
-      } catch (geminiErr: any) {
-        console.warn("[Gemini API Error, using fallback mini-game generator]", geminiErr?.message);
-      }
+    const ai = await generateJSON(promptText, { temperature: 0.3, preferredOrder: providerPreferences?.text });
+    if (ai?.json) {
+      return NextResponse.json({
+        content: ai.json as MiniGameContent,
+        modelUsed: ai.model,
+        provider: ai.provider,
+        costEstimate: estimateTextCost(ai.provider, 0.01),
+      });
     }
 
     // Dynamic fallback generation based on requested engineType

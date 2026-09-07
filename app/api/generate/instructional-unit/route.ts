@@ -5,9 +5,10 @@
 // active accommodation/modification built into the steps.
 
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
 import type { GenerationContext, InstructionalUnitContent, PLAAFPAnalysis } from "@/types/iep";
 import { formatContextForPrompt, formatPlaafpForPrompt } from "@/lib/generators/context";
+import { generateJSON } from "@/lib/ai/textGen";
+import { estimateTextCost, type ProviderPreferences } from "@/lib/ai/providers";
 
 type StepSeed = { title: string; objective: string };
 
@@ -119,12 +120,12 @@ export async function POST(req: NextRequest) {
     const ctx: GenerationContext = body.context;
     const plaafp: PLAAFPAnalysis | undefined = body.plaafp;
     const accommodations: string[] = Array.isArray(body.accommodations) ? body.accommodations : [];
+    const providerPreferences: ProviderPreferences | undefined = body.providerPreferences;
 
     if (!ctx || !ctx.student || !ctx.goal) {
       return NextResponse.json({ error: "Missing required generation context" }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
     const theme = ctx.student.interests[0] || "Exploration";
     const accsForPrompt = (accommodations.length ? accommodations : ctx.accommodations)
       .map((a) => `- ${a}`)
@@ -169,27 +170,15 @@ Respond with ONLY valid JSON in this exact shape:
   "masteryAssessment": "how mastery of the whole unit is assessed"
 }`.trim();
 
-    if (apiKey && apiKey.trim().length > 5) {
-      try {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: promptText,
-          config: { responseMimeType: "application/json", temperature: 0.4 },
-        });
-        const rawText = response.text || "{}";
-        const cleanJson = rawText.replace(/```json\n?|\n?```/g, "").trim();
-        const parsed: InstructionalUnitContent = JSON.parse(cleanJson);
-        if (parsed?.steps?.length) {
-          return NextResponse.json({
-            content: parsed,
-            modelUsed: "gemini-2.5-flash",
-            costEstimate: 0.016,
-          });
-        }
-      } catch (geminiErr: any) {
-        console.warn("[Gemini instructional-unit fallback]", geminiErr?.message);
-      }
+    const ai = await generateJSON(promptText, { temperature: 0.4, preferredOrder: providerPreferences?.text });
+    const parsed: InstructionalUnitContent | undefined = ai?.json;
+    if (parsed?.steps?.length) {
+      return NextResponse.json({
+        content: parsed,
+        modelUsed: ai!.model,
+        provider: ai!.provider,
+        costEstimate: estimateTextCost(ai!.provider, 0.016),
+      });
     }
 
     return NextResponse.json({

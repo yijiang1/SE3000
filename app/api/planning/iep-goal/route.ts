@@ -5,7 +5,6 @@
 // rather than copied from a generic grade-level standard.
 
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
 import type {
   RecommendedIEPGoal,
   PLAAFPAnalysis,
@@ -19,6 +18,8 @@ import {
   formatPresentLevelForPrompt,
   type StudentContextLite
 } from "@/lib/generators/context";
+import { generateJSON } from "@/lib/ai/textGen";
+import { estimateTextCost, type ProviderPreferences } from "@/lib/ai/providers";
 
 function inferCategory(text: string): GoalCategory {
   const t = text.toLowerCase();
@@ -118,12 +119,12 @@ export async function POST(req: NextRequest) {
     const student: StudentContextLite = body.student;
     const plaafp: PLAAFPAnalysis = body.plaafp;
     const input: PresentLevelInput = body.input;
+    const providerPreferences: ProviderPreferences | undefined = body.providerPreferences;
 
     if (!student || !plaafp || !plaafp.skillGaps) {
       return NextResponse.json({ error: "Missing student context or PLAAFP analysis" }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
     const promptText = `
 You are an expert IEP goal writer. Based on the present level and identified skill deficit,
 recommend ONE appropriate, measurable, individualized annual IEP goal.
@@ -166,27 +167,15 @@ Respond with ONLY valid JSON in this exact shape:
   "rationale": "why this is individualized to the instructional level"
 }`.trim();
 
-    if (apiKey && apiKey.trim().length > 5) {
-      try {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: promptText,
-          config: { responseMimeType: "application/json", temperature: 0.3 },
-        });
-        const rawText = response.text || "{}";
-        const cleanJson = rawText.replace(/```json\n?|\n?```/g, "").trim();
-        const parsed: RecommendedIEPGoal = JSON.parse(cleanJson);
-        if (parsed?.annualGoalText && typeof parsed?.targetValue === "number") {
-          return NextResponse.json({
-            content: parsed,
-            modelUsed: "gemini-2.5-flash",
-            costEstimate: 0.012,
-          });
-        }
-      } catch (geminiErr: any) {
-        console.warn("[Gemini IEP-goal fallback]", geminiErr?.message);
-      }
+    const ai = await generateJSON(promptText, { temperature: 0.3, preferredOrder: providerPreferences?.text });
+    const parsed: RecommendedIEPGoal | undefined = ai?.json;
+    if (parsed?.annualGoalText && typeof parsed?.targetValue === "number") {
+      return NextResponse.json({
+        content: parsed,
+        modelUsed: ai!.model,
+        provider: ai!.provider,
+        costEstimate: estimateTextCost(ai!.provider, 0.012),
+      });
     }
 
     return NextResponse.json({

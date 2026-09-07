@@ -8,13 +8,14 @@
 //   • What specific academic skill should be targeted in the IEP?
 
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
 import type { PLAAFPAnalysis, PresentLevelInput } from "@/types/iep";
 import {
   formatStudentContextForPrompt,
   formatPresentLevelForPrompt,
   type StudentContextLite
 } from "@/lib/generators/context";
+import { generateJSON } from "@/lib/ai/textGen";
+import { estimateTextCost, type ProviderPreferences } from "@/lib/ai/providers";
 
 /** Break a free-text blob into short, de-duplicated bullet phrases. */
 function toBullets(text: string, max = 6): string[] {
@@ -99,6 +100,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const student: StudentContextLite = body.student;
     const input: PresentLevelInput = body.input;
+    const providerPreferences: ProviderPreferences | undefined = body.providerPreferences;
 
     if (!student || !input || !input.subjectArea) {
       return NextResponse.json(
@@ -107,7 +109,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
     const promptText = `
 You are an expert Special Education Diagnostician and IEP writer.
 Analyze the teacher-reported present-level data below and produce a clear, compliant
@@ -141,27 +142,15 @@ Respond with ONLY valid JSON in this exact shape:
   }
 }`.trim();
 
-    if (apiKey && apiKey.trim().length > 5) {
-      try {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: promptText,
-          config: { responseMimeType: "application/json", temperature: 0.3 },
-        });
-        const rawText = response.text || "{}";
-        const cleanJson = rawText.replace(/```json\n?|\n?```/g, "").trim();
-        const parsed: PLAAFPAnalysis = JSON.parse(cleanJson);
-        if (parsed?.plaafpStatement && parsed?.skillGaps?.targetSkill) {
-          return NextResponse.json({
-            content: parsed,
-            modelUsed: "gemini-2.5-flash",
-            costEstimate: 0.012,
-          });
-        }
-      } catch (geminiErr: any) {
-        console.warn("[Gemini PLAAFP fallback]", geminiErr?.message);
-      }
+    const ai = await generateJSON(promptText, { temperature: 0.3, preferredOrder: providerPreferences?.text });
+    const parsed: PLAAFPAnalysis | undefined = ai?.json;
+    if (parsed?.plaafpStatement && parsed?.skillGaps?.targetSkill) {
+      return NextResponse.json({
+        content: parsed,
+        modelUsed: ai!.model,
+        provider: ai!.provider,
+        costEstimate: estimateTextCost(ai!.provider, 0.012),
+      });
     }
 
     return NextResponse.json({

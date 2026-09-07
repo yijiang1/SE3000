@@ -10,7 +10,8 @@
 //   - "getting_to_know_you"     — printable "about me" questionnaire for students
 
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
+import { generateJSON } from "@/lib/ai/textGen";
+import { estimateTextCost, type ProviderPreferences } from "@/lib/ai/providers";
 import type {
   TeacherProfile,
   ClassroomProfile,
@@ -553,6 +554,7 @@ export async function POST(req: NextRequest) {
     const category: FirstDayMaterialCategory = body.category;
     const format: FirstDayMaterialFormat = body.format;
     const customPrompt: string | undefined = body.customPrompt;
+    const providerPreferences: ProviderPreferences | undefined = body.providerPreferences;
 
     const VALID_CATEGORIES: FirstDayMaterialCategory[] = [
       "teacher_intro",
@@ -568,7 +570,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid or missing format" }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
     const copy = CATEGORY_COPY[category];
     let contextBlock: string;
 
@@ -646,21 +647,14 @@ Respond with valid JSON matching this exact structure:
 }
 `.trim();
 
-      if (apiKey && apiKey.trim().length > 5) {
-        try {
-          const ai = new GoogleGenAI({ apiKey });
-          const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: promptText,
-            config: { responseMimeType: "application/json", temperature: 0.6 },
-          });
-          const rawText = response.text || "{}";
-          const cleanJson = rawText.replace(/```json\n?|\n?```/g, "").trim();
-          const parsed: SlideDeckContent = JSON.parse(cleanJson);
-          return NextResponse.json({ content: parsed, modelUsed: "gemini-2.5-flash", costEstimate: 0.015 });
-        } catch (geminiErr: any) {
-          console.warn("[Gemini API Error, falling back to local synthesizer]", geminiErr?.message);
-        }
+      const slideAi = await generateJSON(promptText, { temperature: 0.6, preferredOrder: providerPreferences?.text });
+      if (slideAi?.json) {
+        return NextResponse.json({
+          content: slideAi.json as SlideDeckContent,
+          modelUsed: slideAi.model,
+          provider: slideAi.provider,
+          costEstimate: estimateTextCost(slideAi.provider, 0.015),
+        });
       }
 
       const SLIDE_FALLBACKS: Record<FirstDayMaterialCategory, () => SlideDeckContent> = {
@@ -698,21 +692,14 @@ Respond with valid JSON matching this exact structure:
 }
 `.trim();
 
-      if (apiKey && apiKey.trim().length > 5) {
-        try {
-          const ai = new GoogleGenAI({ apiKey });
-          const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: promptText,
-            config: { responseMimeType: "application/json", temperature: 0.6 },
-          });
-          const rawText = response.text || "{}";
-          const cleanJson = rawText.replace(/```json\n?|\n?```/g, "").trim();
-          const parsed: VideoContent = JSON.parse(cleanJson);
-          return NextResponse.json({ content: parsed, modelUsed: "veo-3.1-fast", costEstimate: 0.4 });
-        } catch (geminiErr: any) {
-          console.warn("[Veo storyboard fallback]", geminiErr?.message);
-        }
+      const videoAi = await generateJSON(promptText, { temperature: 0.6, preferredOrder: providerPreferences?.text });
+      if (videoAi?.json) {
+        return NextResponse.json({
+          content: videoAi.json as VideoContent,
+          modelUsed: "veo-3.1-fast",
+          provider: videoAi.provider,
+          costEstimate: estimateTextCost(videoAi.provider, 0.4),
+        });
       }
 
       const VIDEO_FALLBACKS: Record<FirstDayMaterialCategory, () => VideoContent> = {
@@ -757,24 +744,15 @@ Respond with valid JSON matching this exact structure:
 }
 `.trim();
 
-    if (apiKey && apiKey.trim().length > 5) {
-      try {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: promptText,
-          config: { responseMimeType: "application/json", temperature: 0.6 },
-        });
-        const rawText = response.text || "{}";
-        const cleanJson = rawText.replace(/```json\n?|\n?```/g, "").trim();
-        const parsed: FirstDayWebpageContent = JSON.parse(cleanJson);
-        if (!parsed.html || typeof parsed.html !== "string") {
-          throw new Error("Model response missing html field");
-        }
-        return NextResponse.json({ content: parsed, modelUsed: "gemini-2.5-flash", costEstimate: 0.012 });
-      } catch (geminiErr: any) {
-        console.warn("[Gemini API Error, falling back to local webpage synthesizer]", geminiErr?.message);
-      }
+    const pageAi = await generateJSON(promptText, { temperature: 0.6, preferredOrder: providerPreferences?.text });
+    const pageParsed: FirstDayWebpageContent | undefined = pageAi?.json;
+    if (pageParsed?.html && typeof pageParsed.html === "string") {
+      return NextResponse.json({
+        content: pageParsed,
+        modelUsed: pageAi!.model,
+        provider: pageAi!.provider,
+        costEstimate: estimateTextCost(pageAi!.provider, 0.012),
+      });
     }
 
     const WEBPAGE_FALLBACKS: Record<FirstDayMaterialCategory, () => FirstDayWebpageContent> = {

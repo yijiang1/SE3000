@@ -1,21 +1,22 @@
 // app/api/generate/board-game/route.ts — Board & Card Game generator
 
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
 import type { GenerationContext, BoardGameContent } from "@/types/iep";
 import { formatContextForPrompt } from "@/lib/generators/context";
+import { generateJSON } from "@/lib/ai/textGen";
+import { estimateTextCost, type ProviderPreferences } from "@/lib/ai/providers";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const ctx: GenerationContext = body.context;
     const customPrompt: string | undefined = body.customPrompt;
+    const providerPreferences: ProviderPreferences | undefined = body.providerPreferences;
 
     if (!ctx || !ctx.student || !ctx.goal) {
       return NextResponse.json({ error: "Missing required generation context" }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
     const studentInterest = ctx.student.interests[0] || "Adventure";
     const promptText = `
 You are an expert Assistive Technologist and Game Designer for Special Education.
@@ -65,29 +66,14 @@ Respond with valid JSON matching this exact structure:
 }
 `.trim();
 
-    if (apiKey && apiKey.trim().length > 5) {
-      try {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: promptText,
-          config: {
-            responseMimeType: "application/json",
-            temperature: 0.4,
-          },
-        });
-
-        const rawText = response.text || "{}";
-        const cleanJson = rawText.replace(/```json\n?|\n?```/g, "").trim();
-        const parsed: BoardGameContent = JSON.parse(cleanJson);
-        return NextResponse.json({
-          content: parsed,
-          modelUsed: "gemini-2.5-flash",
-          costEstimate: 0.02,
-        });
-      } catch (geminiErr: any) {
-        console.warn("[Gemini API Error, using fallback game generator]", geminiErr?.message);
-      }
+    const ai = await generateJSON(promptText, { temperature: 0.4, preferredOrder: providerPreferences?.text });
+    if (ai?.json) {
+      return NextResponse.json({
+        content: ai.json as BoardGameContent,
+        modelUsed: ai.model,
+        provider: ai.provider,
+        costEstimate: estimateTextCost(ai.provider, 0.02),
+      });
     }
 
     // Fallback thematic board game generator

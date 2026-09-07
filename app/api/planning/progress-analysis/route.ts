@@ -5,7 +5,6 @@
 // worksheet, and whether the student is making adequate progress.
 
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
 import type {
   IEPGoal,
   ProgressLogEntry,
@@ -13,6 +12,8 @@ import type {
   InstructionalUnitContent
 } from "@/types/iep";
 import { computeTrend } from "@/lib/trending";
+import { generateJSON } from "@/lib/ai/textGen";
+import { estimateTextCost, type ProviderPreferences } from "@/lib/ai/providers";
 
 const NEGATIVE_HINTS = /(struggl|difficult|missed|error|incorrect|prompt|redirect|distract|regress|confus|reteach|below|declin)/i;
 
@@ -126,18 +127,16 @@ export async function POST(req: NextRequest) {
     const logs: ProgressLogEntry[] = Array.isArray(body.logs) ? body.logs : [];
     const unit: InstructionalUnitContent | undefined = body.instructionalUnit;
     const currentDifficultyLevel: number = Number(body.currentDifficultyLevel) || 2;
+    const providerPreferences: ProviderPreferences | undefined = body.providerPreferences;
 
     if (!goal || !goal.id) {
       return NextResponse.json({ error: "Missing goal" }, { status: 400 });
     }
 
     const local = synthesizeAnalysis(goal, logs, currentDifficultyLevel, unit);
-    const apiKey = process.env.GEMINI_API_KEY;
 
-    if (apiKey && apiKey.trim().length > 5 && local.observations >= 2) {
-      try {
-        const ai = new GoogleGenAI({ apiKey });
-        const dataTable = [...logs]
+    if (local.observations >= 2) {
+      const dataTable = [...logs]
           .filter((l) => l.goalId === goal.id)
           .sort((a, b) => a.date.localeCompare(b.date))
           .map((l) => `${l.date}: ${l.value}${goal.measurementUnit}${l.note ? ` — ${l.note}` : ""}`)
@@ -167,32 +166,24 @@ Respond with ONLY valid JSON:
   "narrative": "2-4 sentence plain-language analysis for a progress report"
 }`.trim();
 
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: promptText,
-          config: { responseMimeType: "application/json", temperature: 0.3 },
+      const ai = await generateJSON(promptText, { temperature: 0.3, preferredOrder: providerPreferences?.text });
+      const parsed = ai?.json;
+      if (parsed?.nextInstructionalStep) {
+        return NextResponse.json({
+          content: {
+            ...local,
+            strugglingAreas: Array.isArray(parsed.strugglingAreas) ? parsed.strugglingAreas : local.strugglingAreas,
+            nextInstructionalStep: parsed.nextInstructionalStep,
+            recommendedDifficultyLevel:
+              Math.max(1, Math.min(5, Math.round(parsed.recommendedDifficultyLevel))) || local.recommendedDifficultyLevel,
+            adequateProgress:
+              typeof parsed.adequateProgress === "boolean" ? parsed.adequateProgress : local.adequateProgress,
+            narrative: parsed.narrative || local.narrative,
+          } as ProgressAnalysis,
+          modelUsed: ai!.model,
+          provider: ai!.provider,
+          costEstimate: estimateTextCost(ai!.provider, 0.01),
         });
-        const rawText = response.text || "{}";
-        const cleanJson = rawText.replace(/```json\n?|\n?```/g, "").trim();
-        const parsed = JSON.parse(cleanJson);
-        if (parsed?.nextInstructionalStep) {
-          return NextResponse.json({
-            content: {
-              ...local,
-              strugglingAreas: Array.isArray(parsed.strugglingAreas) ? parsed.strugglingAreas : local.strugglingAreas,
-              nextInstructionalStep: parsed.nextInstructionalStep,
-              recommendedDifficultyLevel:
-                Math.max(1, Math.min(5, Math.round(parsed.recommendedDifficultyLevel))) || local.recommendedDifficultyLevel,
-              adequateProgress:
-                typeof parsed.adequateProgress === "boolean" ? parsed.adequateProgress : local.adequateProgress,
-              narrative: parsed.narrative || local.narrative,
-            } as ProgressAnalysis,
-            modelUsed: "gemini-2.5-flash",
-            costEstimate: 0.01,
-          });
-        }
-      } catch (geminiErr: any) {
-        console.warn("[Gemini progress-analysis fallback]", geminiErr?.message);
       }
     }
 

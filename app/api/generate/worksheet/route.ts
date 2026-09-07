@@ -7,7 +7,6 @@
 // student demonstrates mastery (driven by the progress-analysis step).
 
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
 import type {
   GenerationContext,
   WorksheetContent,
@@ -17,6 +16,8 @@ import type {
   PLAAFPAnalysis
 } from "@/types/iep";
 import { formatContextForPrompt, formatPlaafpForPrompt } from "@/lib/generators/context";
+import { generateJSON } from "@/lib/ai/textGen";
+import { estimateTextCost, type ProviderPreferences } from "@/lib/ai/providers";
 
 const PURPOSE_LABEL: Record<string, string> = {
   practice: "Practice Worksheet",
@@ -240,6 +241,7 @@ export async function POST(req: NextRequest) {
     const ctx: GenerationContext = body.context;
     const spec: WorksheetSpec = body.spec;
     const plaafp: PLAAFPAnalysis | undefined = body.plaafp;
+    const providerPreferences: ProviderPreferences | undefined = body.providerPreferences;
 
     if (!ctx || !ctx.student || !ctx.goal) {
       return NextResponse.json({ error: "Missing required generation context" }, { status: 400 });
@@ -248,7 +250,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing worksheet spec" }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
     const skill = plaafp?.skillGaps.targetSkill || ctx.goal.goalText;
 
     const promptText = `
@@ -296,28 +297,16 @@ Respond with ONLY valid JSON in this exact shape:
   "printable": ${spec.printable}
 }`.trim();
 
-    if (apiKey && apiKey.trim().length > 5) {
-      try {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: promptText,
-          config: { responseMimeType: "application/json", temperature: 0.3 },
-        });
-        const rawText = response.text || "{}";
-        const cleanJson = rawText.replace(/```json\n?|\n?```/g, "").trim();
-        const parsed: WorksheetContent = JSON.parse(cleanJson);
-        if (parsed?.items?.length) {
-          if (!spec.includeAnswerKey) parsed.answerKey = [];
-          return NextResponse.json({
-            content: parsed,
-            modelUsed: "gemini-2.5-flash",
-            costEstimate: 0.014,
-          });
-        }
-      } catch (geminiErr: any) {
-        console.warn("[Gemini worksheet fallback]", geminiErr?.message);
-      }
+    const ai = await generateJSON(promptText, { temperature: 0.3, preferredOrder: providerPreferences?.text });
+    const parsed: WorksheetContent | undefined = ai?.json;
+    if (parsed?.items?.length) {
+      if (!spec.includeAnswerKey) parsed.answerKey = [];
+      return NextResponse.json({
+        content: parsed,
+        modelUsed: ai!.model,
+        provider: ai!.provider,
+        costEstimate: estimateTextCost(ai!.provider, 0.014),
+      });
     }
 
     return NextResponse.json({
