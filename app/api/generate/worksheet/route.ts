@@ -1,3 +1,5 @@
+import { validOutput } from "@/lib/schemas";
+import { generationRoute } from "@/lib/apiGuard";
 // app/api/generate/worksheet/route.ts — Stage 5: differentiated worksheets & homework
 //
 // Generates practice materials aligned to the IEP goal and the student's current
@@ -235,9 +237,8 @@ function synthesizeWorksheet(
   };
 }
 
-export async function POST(req: NextRequest) {
+export const POST = generationRoute(async (req, body) => {
   try {
-    const body = await req.json();
     const ctx: GenerationContext = body.context;
     const spec: WorksheetSpec = body.spec;
     const plaafp: PLAAFPAnalysis | undefined = body.plaafp;
@@ -297,7 +298,7 @@ Respond with ONLY valid JSON in this exact shape:
   "printable": ${spec.printable}
 }`.trim();
 
-    const ai = await generateJSON(promptText, { temperature: 0.3, preferredOrder: providerPreferences?.text });
+    const ai = await generateJSON(promptText, { temperature: 0.3, validate: (value) => validOutput("worksheet", value), preferredOrder: providerPreferences?.text });
     const parsed: WorksheetContent | undefined = ai?.json;
     if (parsed?.items?.length) {
       if (!spec.includeAnswerKey) parsed.answerKey = [];
@@ -321,4 +322,4 @@ Respond with ONLY valid JSON in this exact shape:
       { status: 500 }
     );
   }
-}
+});

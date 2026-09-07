@@ -1,3 +1,5 @@
+import { validOutput } from "@/lib/schemas";
+import { generationRoute } from "@/lib/apiGuard";
 // app/api/generate/mini-game/route.ts — Interactive browser mini-game generator
 
 import { NextRequest, NextResponse } from "next/server";
@@ -6,9 +8,8 @@ import { formatContextForPrompt } from "@/lib/generators/context";
 import { generateJSON } from "@/lib/ai/textGen";
 import { estimateTextCost, type ProviderPreferences } from "@/lib/ai/providers";
 
-export async function POST(req: NextRequest) {
+export const POST = generationRoute(async (req, body) => {
   try {
-    const body = await req.json();
     const ctx: GenerationContext = body.context;
     const engineType: MiniGameEngineType = body.engineType || "matching";
     const customPrompt: string | undefined = body.customPrompt;
@@ -60,7 +61,7 @@ Respond with valid JSON matching this exact structure:
 }
 `.trim();
 
-    const ai = await generateJSON(promptText, { temperature: 0.3, preferredOrder: providerPreferences?.text });
+    const ai = await generateJSON(promptText, { temperature: 0.3, validate: (value) => validOutput("mini_game", value), preferredOrder: providerPreferences?.text });
     if (ai?.json) {
       return NextResponse.json({
         content: ai.json as MiniGameContent,
@@ -165,4 +166,4 @@ Respond with valid JSON matching this exact structure:
     console.error("Mini-game generation error:", error);
     return NextResponse.json({ error: error.message || "Failed to generate mini-game" }, { status: 500 });
   }
-}
+});

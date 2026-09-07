@@ -2,6 +2,8 @@
 // components/materials/FirstDayWebpageViewer.tsx — Renders a generated First-Day webpage
 // (Teacher Introduction or Classroom Expectations)
 
+import { printHtml } from "@/lib/print";
+import { generatedDocument, sandboxedDocumentTab } from "@/lib/safeHtml";
 import { useMemo } from "react";
 import { Globe, Printer, ExternalLink } from "lucide-react";
 import type { FirstDayWebpageContent } from "@/types/iep";
@@ -13,13 +15,11 @@ interface Props {
 
 export default function FirstDayWebpageViewer({ content, onClose }: Props) {
   const srcDoc = useMemo(() => {
-    return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-<style>body{margin:0;padding:24px;background:#ffffff;font-family:ui-sans-serif,system-ui,sans-serif;}</style>
-</head><body>${content.html}</body></html>`;
+    return generatedDocument(content.html);
   }, [content.html]);
 
   function handleOpenInNewTab() {
-    const blob = new Blob([srcDoc], { type: "text/html" });
+    const blob = new Blob([sandboxedDocumentTab(content.html)], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     window.open(url, "_blank", "noopener,noreferrer");
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
@@ -50,9 +50,9 @@ export default function FirstDayWebpageViewer({ content, onClose }: Props) {
             <ExternalLink className="w-4 h-4" />
           </button>
           <button
-            onClick={() => window.print()}
+            onClick={() => printHtml(content.html)}
             className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors"
-            title="Print"
+            title="Print material"
           >
             <Printer className="w-4 h-4" />
           </button>

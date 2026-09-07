@@ -116,7 +116,8 @@ export interface ServiceDelivery {
   id: string;
   type: ServiceType;
   mandatedMinutesPerWeek: number;
-  deliveredMinutesThisWeek: number;
+  deliveredMinutesThisWeek: number; // legacy undated snapshot
+  entries?: {id: string; date: string; minutes: number}[];
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -187,6 +188,7 @@ export interface GeneratedMaterial {
   description: string;
   promptUsed: string;
   modelUsed: string;
+  requestedProvider?: string;
   provider?: string;             // which AI provider produced this (undefined = local/offline)
   generationCostEstimate?: number;
   contentJson?: string;          // Serialized JSON for slides, board games, mini games, etc.
@@ -665,6 +667,7 @@ export interface FirstDayMaterial {
   description: string;
   promptUsed: string;
   modelUsed: string;
+  requestedProvider?: string;
   provider?: string;             // which AI provider produced this (undefined = local/offline)
   generationCostEstimate?: number;
   contentJson?: string;          // Serialized FirstDayMaterialContent
@@ -705,7 +708,7 @@ export interface PlanningSession {
 // ────────────────────────────────────────────────────────────────────────────
 
 export interface AppSettings {
-  id: "default";
+  id: "default" | "demo-initialized";
   providerPreferences: ProviderPreferences;
   updatedAt: string;
 }
@@ -727,6 +730,7 @@ export type UsageFeature =
 export interface UsageLogEntry {
   id: string;
   feature: UsageFeature;
+  requestedProvider?: string;
   provider?: string;
   modelUsed: string;
   costEstimate: number;

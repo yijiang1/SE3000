@@ -1,3 +1,4 @@
+import { timedFetch } from "./timedFetch";
 // lib/ai/ttsGen.ts — multi-provider text-to-speech with fallback chain
 
 import OpenAI from "openai";
@@ -17,14 +18,14 @@ interface RawResult {
 }
 
 function isConfigured(id: TTSProviderId): boolean {
-  return TTS_PROVIDER_ENV[id].every((envVar) => {
+  return (TTS_PROVIDER_ENV[id] ?? []).length > 0 && TTS_PROVIDER_ENV[id].every((envVar) => {
     const v = process.env[envVar];
     return !!v && v.trim().length > 5;
   });
 }
 
 async function callOpenAITTS({ text, voice, speed }: CallOpts): Promise<RawResult> {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 45_000, maxRetries: 0 });
   const mp3Response = await openai.audio.speech.create({
     model: "tts-1",
     voice,
@@ -50,7 +51,7 @@ const MINIMAX_VOICE_MAP: Record<NarrationVoice, string> = {
 async function callMiniMaxTTS({ text, voice, speed }: CallOpts): Promise<RawResult> {
   const apiKey = process.env.MINIMAX_API_KEY;
   const groupId = process.env.MINIMAX_GROUP_ID;
-  const res = await fetch(`https://api.minimax.io/v1/t2a_v2?GroupId=${encodeURIComponent(groupId!)}`, {
+  const res = await timedFetch(`https://api.minimax.io/v1/t2a_v2?GroupId=${encodeURIComponent(groupId!)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
@@ -88,7 +89,7 @@ export interface TTSGenResult {
 export async function generateSpeech(
   opts: CallOpts & { preferredOrder?: TTSProviderId[] }
 ): Promise<TTSGenResult | null> {
-  const order = (opts.preferredOrder?.length ? opts.preferredOrder : DEFAULT_TTS_PROVIDER_ORDER).filter(
+  const order = (opts.preferredOrder ?? DEFAULT_TTS_PROVIDER_ORDER).filter(
     isConfigured
   );
 

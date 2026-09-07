@@ -1,5 +1,5 @@
 "use client";
-// components/materials/VideoPlayer.tsx — Veo 3.1 Video clip & Storyboard presenter
+// components/materials/VideoPlayer.tsx — Video clip & Storyboard presenter
 
 import { useState, useEffect, useRef } from "react";
 import {
@@ -88,7 +88,7 @@ export default function VideoPlayer({ content, onClose }: Props) {
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                {content.videoUrl ? "AI-Generated Video" : "Veo 3.1 Animated Storyboard"}
+                {content.videoUrl ? "AI-Generated Video" : "Storyboard preview"}
               </span>
               <span className="text-xs text-slate-400">Theme: {content.theme}</span>
             </div>
@@ -129,7 +129,7 @@ export default function VideoPlayer({ content, onClose }: Props) {
             <Sparkles className={clsx("w-7 h-7", isPlaying && "animate-spin")} />
           </div>
           <p className="text-sm sm:text-base text-slate-200 font-semibold leading-relaxed bg-slate-900/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-700/80 shadow-lg">
-            "{currentScene.visualDescription}"
+            &quot;{currentScene.visualDescription}&quot;
           </p>
         </div>
 
@@ -137,7 +137,7 @@ export default function VideoPlayer({ content, onClose }: Props) {
         <div className="z-10 p-3.5 rounded-xl bg-rose-950/80 backdrop-blur-md border border-rose-500/40 flex items-center gap-2.5 shadow-lg">
           <Volume2 className="w-4 h-4 text-rose-400 shrink-0" />
           <p className="text-xs sm:text-sm font-bold text-rose-100 italic">
-            "{currentScene.narrationCue}"
+            &quot;{currentScene.narrationCue}&quot;
           </p>
         </div>
 

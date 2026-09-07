@@ -1,3 +1,5 @@
+import { validOutput } from "@/lib/schemas";
+import { generationRoute } from "@/lib/apiGuard";
 // app/api/generate/slides/route.ts — Slide deck generator using Gemini 2.5 Flash
 
 import { NextRequest, NextResponse } from "next/server";
@@ -6,9 +8,8 @@ import { formatContextForPrompt } from "@/lib/generators/context";
 import { generateJSON } from "@/lib/ai/textGen";
 import { estimateTextCost, type ProviderPreferences } from "@/lib/ai/providers";
 
-export async function POST(req: NextRequest) {
+export const POST = generationRoute(async (req, body) => {
   try {
-    const body = await req.json();
     const ctx: GenerationContext = body.context;
     const customPrompt: string | undefined = body.customPrompt;
     const providerPreferences: ProviderPreferences | undefined = body.providerPreferences;
@@ -59,7 +60,7 @@ Respond with valid JSON matching this exact structure:
 }
 `.trim();
 
-    const ai = await generateJSON(promptText, { temperature: 0.4, preferredOrder: providerPreferences?.text });
+    const ai = await generateJSON(promptText, { temperature: 0.4, validate: (value) => validOutput("slide_deck", value), preferredOrder: providerPreferences?.text });
     if (ai?.json) {
       return NextResponse.json({
         content: ai.json as SlideDeckContent,
@@ -158,4 +159,4 @@ Respond with valid JSON matching this exact structure:
     console.error("Slide generation error:", error);
     return NextResponse.json({ error: error.message || "Failed to generate slide deck" }, { status: 500 });
   }
-}
+});

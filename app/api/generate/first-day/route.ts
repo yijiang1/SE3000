@@ -1,3 +1,5 @@
+import { validOutput } from "@/lib/schemas";
+import { generationRoute } from "@/lib/apiGuard";
 // app/api/generate/first-day/route.ts — First-Day Materials generator
 //
 // Produces first-day-of-class materials that are NOT conditioned on a
@@ -548,9 +550,8 @@ function buildFallbackSurveyVideo(survey: SurveyProfile): VideoContent {
   };
 }
 
-export async function POST(req: NextRequest) {
+export const POST = generationRoute(async (req, body) => {
   try {
-    const body = await req.json();
     const category: FirstDayMaterialCategory = body.category;
     const format: FirstDayMaterialFormat = body.format;
     const customPrompt: string | undefined = body.customPrompt;
@@ -647,7 +648,7 @@ Respond with valid JSON matching this exact structure:
 }
 `.trim();
 
-      const slideAi = await generateJSON(promptText, { temperature: 0.6, preferredOrder: providerPreferences?.text });
+      const slideAi = await generateJSON(promptText, { validate: (value) => validOutput("slide_deck", value), temperature: 0.6, preferredOrder: providerPreferences?.text });
       if (slideAi?.json) {
         return NextResponse.json({
           content: slideAi.json as SlideDeckContent,
@@ -692,11 +693,11 @@ Respond with valid JSON matching this exact structure:
 }
 `.trim();
 
-      const videoAi = await generateJSON(promptText, { temperature: 0.6, preferredOrder: providerPreferences?.text });
+      const videoAi = await generateJSON(promptText, { validate: (value) => validOutput("video_clip", value), temperature: 0.6, preferredOrder: providerPreferences?.text });
       if (videoAi?.json) {
         return NextResponse.json({
           content: videoAi.json as VideoContent,
-          modelUsed: "veo-3.1-fast",
+          modelUsed: videoAi.model,
           provider: videoAi.provider,
           costEstimate: estimateTextCost(videoAi.provider, 0.4),
         });
@@ -709,7 +710,7 @@ Respond with valid JSON matching this exact structure:
         family_letter: () => buildFallbackFamilyLetterVideo(body.teacher, body.classroom),
         getting_to_know_you: () => buildFallbackSurveyVideo(body.survey),
       };
-      return NextResponse.json({ content: VIDEO_FALLBACKS[category](), modelUsed: "veo-3.1-fast", costEstimate: 0.0 });
+      return NextResponse.json({ content: VIDEO_FALLBACKS[category](), modelUsed: "local-storyboard", costEstimate: 0.0 });
     }
 
     // format === "html_page"
@@ -744,7 +745,7 @@ Respond with valid JSON matching this exact structure:
 }
 `.trim();
 
-    const pageAi = await generateJSON(promptText, { temperature: 0.6, preferredOrder: providerPreferences?.text });
+    const pageAi = await generateJSON(promptText, { validate: (value) => validOutput("html_page", value), temperature: 0.6, preferredOrder: providerPreferences?.text });
     const pageParsed: FirstDayWebpageContent | undefined = pageAi?.json;
     if (pageParsed?.html && typeof pageParsed.html === "string") {
       return NextResponse.json({
@@ -767,4 +768,4 @@ Respond with valid JSON matching this exact structure:
     console.error("First-day material generation error:", error);
     return NextResponse.json({ error: error.message || "Failed to generate first-day material" }, { status: 500 });
   }
-}
+});

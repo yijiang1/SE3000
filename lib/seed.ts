@@ -1,5 +1,6 @@
 // lib/seed.ts — Realistic placeholder data seeder for SE 3000
 
+import { localDate } from "@/lib/dates";
 import db from "./db";
 import type {
   StudentIEPProfile,
@@ -19,13 +20,13 @@ import { v4 as uuidv4 } from "uuid";
 function daysAgo(n: number): string {
   const d = new Date();
   d.setDate(d.getDate() - n);
-  return d.toISOString().split("T")[0];
+  return localDate(d);
 }
 
 function futureDate(n: number): string {
   const d = new Date();
   d.setDate(d.getDate() + n);
-  return d.toISOString().split("T")[0];
+  return localDate(d);
 }
 
 const now = new Date().toISOString();
@@ -851,6 +852,8 @@ export async function seedIfEmpty() {
   if (seedingPromise) return seedingPromise;
 
   seedingPromise = (async () => {
+    const seeded = await db.settings.get("demo-initialized");
+    if (seeded) return;
     const count = await db.profiles.count();
     if (count > 0) {
       // Backfill learningProfile on any profile that predates it — including
@@ -876,14 +879,7 @@ export async function seedIfEmpty() {
           updatedAt: new Date().toISOString(),
         });
       }
-      const matCount = await db.generatedMaterials.count();
-      if (matCount === 0) {
-        await db.generatedMaterials.bulkPut([...seedMaterials, seedWorksheetMaterial]);
-      }
-      const planCount = await db.planningSessions.count();
-      if (planCount === 0) {
-        await db.planningSessions.bulkPut(seedPlanningSessions);
-      }
+      await db.settings.put({id:"demo-initialized",providerPreferences:{},updatedAt:new Date().toISOString()});
       return;
     }
 
@@ -893,7 +889,10 @@ export async function seedIfEmpty() {
       db.progressLogs,
       db.generatedMaterials,
       db.planningSessions,
+      db.settings,
       async () => {
+        if (await db.settings.get("demo-initialized")) return;
+        await db.settings.put({id:"demo-initialized",providerPreferences:{},updatedAt:new Date().toISOString()});
         await db.profiles.bulkPut([studentJD, studentMR]);
         await db.progressLogs.bulkPut(seedLogs);
         await db.generatedMaterials.bulkPut([...seedMaterials, seedWorksheetMaterial]);

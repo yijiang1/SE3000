@@ -1,0 +1,47 @@
+import { z } from "zod";
+const text = z.string().max(100000);
+const label = text.min(1);
+const strings = z.array(text).max(500);
+const number = z.number().finite();
+const positive = number.positive();
+const list = <T extends z.ZodType>(schema: T) => z.array(schema).min(1).max(500);
+const id = label;
+const unique = (rows: { id: string }[]) => new Set(rows.map((r) => r.id)).size === rows.length;
+const question = z.object({ question: label, options: list(label), correctIndex: number.int().nonnegative() }).refine((q) => q.correctIndex < q.options.length, "Answer index is outside options");
+export const studentSchema = z.object({ initials: text, grade: text, eligibility: text, readingLevel: text, comprehensionLevel: text, communicationNeeds: strings, sensoryConsiderations: strings, interests: strings, preferredModality: strings, additionalNotes: text.optional() });
+export const goalFields = { id, goalText: label, category: z.enum(["academic", "behavioral", "social_emotional", "communication", "motor"]), baselineValue: number.nonnegative(), targetValue: number.nonnegative(), measurementUnit: z.enum(["%", "count", "minutes", "trials", "rating_scale", "frequency"]), trialsDenominator: positive.int().optional() };
+export const contextSchema = z.object({ student: studentSchema, goal: z.object(goalFields), accommodations: strings });
+export const inputSchema = z.object({ subjectArea: label, currentGradeLevel: text, currentInstructionalLevel: text, currentAcademicSkills: text, areasOfStrength: text, areasOfWeakness: text, assessmentResults: text, classroomPerformance: text, previousGoalsAndProgress: text, teacherObservations: text, rawNotes: text.optional() });
+const plaafp = z.object({ plaafpStatement: label, subjectArea: label, instructionalLevel: label, skillGaps: z.object({ canDoNow: strings, needsToImprove: strings, distanceFromGradeLevel: text, targetSkill: label, prioritizedSkillGaps: strings }) });
+const recommendedGoal = z.object({ targetSkill: label, baselineStatement: label, baselineValue: number.nonnegative(), annualGoalText: label, category: goalFields.category, measurementUnit: goalFields.measurementUnit, targetValue: number.nonnegative(), trialsDenominator: positive.int().optional(), measurementCriteria: label, masteryCriteria: label, progressMonitoringMethod: label, shortTermObjectives: list(z.object({order: positive.int(), text: label})), rationale: label });
+const worksheetType = z.enum(["multiple_choice", "short_answer", "fill_in_blank", "matching", "word_problem", "mixed"]);
+const purpose = z.enum(["practice", "guided_practice", "independent_practice", "homework", "exit_ticket", "quiz", "progress_monitoring", "review"]);
+export const worksheetSpecSchema = z.object({ purpose, numQuestions: positive.int().max(40), difficultyLevel: positive.int().max(5), questionType: worksheetType, readingLevel: text, scaffolding: z.enum(["none", "light", "moderate", "heavy"]), includeAnswerKey: z.boolean(), includeVisualSupports: z.boolean(), modifiedProblems: z.boolean(), printable: z.boolean() });
+const miniGame = z.object({ title: label, theme: text, instructions: label, successMessage: text, engineType: z.enum(["matching", "sorting", "multiple_choice", "sequencing"]), matchingPairs: list(z.object({ id, prompt: label, match: label })).refine(unique).optional(), sortingBuckets: list(z.object({ id, title: label, items: list(label) })).refine(unique).optional(), quizQuestions: list(question.and(z.object({id})) ).refine(unique).optional(), sequencingSteps: list(z.object({id, order: positive.int(), text: label})).refine(unique).refine((steps) => [...steps].sort((a,b) => a.order-b.order).every((s,i) => s.order === i+1)).optional() }).refine((game) => !!({matching:game.matchingPairs,sorting:game.sortingBuckets,multiple_choice:game.quizQuestions,sequencing:game.sequencingSteps}[game.engineType]));
+const unit = z.object({ title: label, targetSkill: label, instructionalLevel: label, theme: text, accommodationsSummary: strings, steps: list(z.object({order: positive.int(),title:label,objective:label,activities:strings,scaffolds:strings,accommodationsApplied:strings,checkForUnderstanding:label})), masteryAssessment:label });
+export const outputSchemas = {
+  slide_deck: z.object({ title: label, topic: text, targetSkill: text, readingLevel: text, theme: text, slides: list(z.object({ slideNumber: positive.int(), title: label, content: strings, teacherNotes: text.optional(), imagePrompt: text.optional(), interactiveQuestion: question.and(z.object({explanation:text})).optional() })) }),
+  board_game: z.object({ gameTitle:label,theme:text,targetSkill:text,objective:text,playerCount:text,materialsNeeded:strings,rules:strings,tiles:list(z.object({index:number.int().nonnegative(),label:text,type:z.enum(["start","challenge","bonus","rest","finish"])})),cards:list(z.object({id,category:text,questionOrTask:label,answerOrCriteria:label})).refine(unique),printableInstructions:text }),
+  mini_game: miniGame,
+  music: z.object({title:label,genre:label,mood:label,tempoBpm:positive.max(400),durationSeconds:positive.max(3600),lyricsOrStructure:text.optional(),purpose:z.enum(["mnemonic_song","calming_focus","reward_jingle","transition_cue"])}),
+  video_clip: z.object({title:label,theme:text,scenes:list(z.object({sceneNumber:positive.int(),visualDescription:label,durationSeconds:positive.max(3600),narrationCue:text})),hasNarration:z.boolean(),hasMusic:z.boolean()}),
+  narration: z.object({title:label,fullTranscript:label,voice:z.enum(["alloy","echo","fable","onyx","nova","shimmer"]),speed:positive.max(4),segments:list(z.object({segmentIndex:positive.int(),text:label,durationSeconds:positive.optional()})).optional()}),
+  worksheet: z.object({title:label,purpose,targetSkill:label,instructionalLevel:text,readingLevel:text,difficultyLevel:positive.int().max(5),theme:text,instructions:text,accommodationsApplied:strings,items:list(z.object({number:positive.int(),prompt:label,type:worksheetType,choices:strings.optional(),answer:text,scaffold:text.optional(),visualSupport:text.optional()})),answerKey:z.array(z.object({number:positive.int(),answer:text,explanation:text.optional()})),teacherNotes:text,printable:z.boolean()}),
+  html_page: z.object({title:label,html:label}),
+  plaafp,
+  iep_goal: recommendedGoal,
+  instructional_unit: unit,
+  progress_analysis: z.object({strugglingAreas:strings,nextInstructionalStep:label,recommendedDifficultyLevel:positive.int().max(5),adequateProgress:z.boolean(),narrative:label}),
+};
+export type OutputKind = keyof typeof outputSchemas;
+export function validOutput(kind: OutputKind, value: unknown): boolean { return outputSchemas[kind].safeParse(value).success; }
+export const preferencesSchema = z.object({text:z.array(z.enum(["gemini","deepseek","kimi","openai"])).max(4).optional(),tts:z.array(z.enum(["openai","minimax"])).max(2).optional(),video:z.array(z.enum(["minimax","kling"])).max(2).optional(),music:z.array(z.literal("minimax")).max(1).optional()});
+export const requestSchema = z.object({providerPreferences:preferencesSchema.optional(),customPrompt:text.optional(),context:contextSchema.optional(),student:studentSchema.optional(),input:inputSchema.optional(),plaafp:plaafp.optional(),accommodations:strings.optional(),spec:worksheetSpecSchema.optional(),goal:z.object({...goalFields,reviewDate:label}).optional(),logs:z.array(z.object({id,profileId:id,goalId:id,date:label,value:number,note:text.optional(),createdAt:label})).max(5000).optional(),instructionalUnit:unit.optional(),currentDifficultyLevel:positive.int().max(5).optional(),engineType:z.enum(["matching","sorting","multiple_choice","sequencing"]).optional(),voice:z.enum(["alloy","echo","fable","onyx","nova","shimmer"]).optional(),speed:positive.min(0.25).max(4).optional(),textOverride:text.max(4000).optional(),purpose:z.enum(["mnemonic_song","calming_focus","reward_jingle","transition_cue"]).optional(),durationType:z.enum(["clip","pro"]).optional()}).passthrough();
+export const firstDayRequestSchema = z.object({
+  category:z.enum(["teacher_intro","classroom_expectations","icebreaker_activities","family_letter","getting_to_know_you"]),
+  format:z.enum(["slide_deck","html_page","video_clip"]),
+  teacher:z.object({name:label,roleTitle:label,subjectsOrGrades:text,hobbiesAndInterests:strings,funFacts:strings,yearsExperience:text.optional(),favoriteQuote:text.optional(),teachingPhilosophy:text.optional(),funLearningGoalForStudents:text.optional(),contactInfo:text.optional(),themeColor:text.optional()}).passthrough().optional(),
+  classroom:z.object({rules:strings,routines:strings,classroomName:text.optional(),theme:text.optional(),rewardsSystem:text.optional(),consequencesSystem:text.optional(),additionalNotes:text.optional(),themeColor:text.optional()}).passthrough().optional(),
+  icebreaker:z.object({groupSize:label,numberOfActivities:positive.int().max(40),activityStyles:strings,theme:text.optional(),durationMinutes:text.optional(),specialConsiderations:text.optional(),additionalNotes:text.optional(),themeColor:text.optional()}).passthrough().optional(),
+  survey:z.object({title:label,questions:list(label),introMessage:text.optional(),theme:text.optional(),themeColor:text.optional()}).passthrough().optional(),
+}).passthrough().refine((body) => body.category === "classroom_expectations" ? !!body.classroom : body.category === "icebreaker_activities" ? !!body.icebreaker : body.category === "getting_to_know_you" ? !!body.survey : !!body.teacher);

@@ -1,3 +1,5 @@
+import { validOutput } from "@/lib/schemas";
+import { generationRoute } from "@/lib/apiGuard";
 // app/api/planning/progress-analysis/route.ts — Stage 6: track progress toward the IEP goal
 //
 // Reads logged performance data and returns accuracy/mastery, struggling areas,
@@ -61,7 +63,7 @@ function synthesizeAnalysis(
 
   const adequateProgress =
     trend.status === "on_track" ||
-    (trend.status === "at_risk" && (trend.slope ?? 0) > 0);
+    (trend.status === "at_risk" && (trend.slope ?? 0) * Math.sign(goal.targetValue - goal.baselineValue) > 0);
 
   const nextStepFromUnit = (() => {
     if (!unit?.steps?.length) return null;
@@ -120,9 +122,8 @@ function synthesizeAnalysis(
   };
 }
 
-export async function POST(req: NextRequest) {
+export const POST = generationRoute(async (req, body) => {
   try {
-    const body = await req.json();
     const goal: IEPGoal = body.goal;
     const logs: ProgressLogEntry[] = Array.isArray(body.logs) ? body.logs : [];
     const unit: InstructionalUnitContent | undefined = body.instructionalUnit;
@@ -166,7 +167,7 @@ Respond with ONLY valid JSON:
   "narrative": "2-4 sentence plain-language analysis for a progress report"
 }`.trim();
 
-      const ai = await generateJSON(promptText, { temperature: 0.3, preferredOrder: providerPreferences?.text });
+      const ai = await generateJSON(promptText, { temperature: 0.3, validate: (value) => validOutput("progress_analysis", value), preferredOrder: providerPreferences?.text });
       const parsed = ai?.json;
       if (parsed?.nextInstructionalStep) {
         return NextResponse.json({
@@ -199,4 +200,4 @@ Respond with ONLY valid JSON:
       { status: 500 }
     );
   }
-}
+});

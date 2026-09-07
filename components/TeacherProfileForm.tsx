@@ -1,6 +1,7 @@
 "use client";
 // components/TeacherProfileForm.tsx — Modal form to create/edit the teacher's own "About Me" profile
 
+import Dialog from "@/components/Dialog";
 import { useState } from "react";
 import { X, Smile, Upload } from "lucide-react";
 import type { TeacherProfile } from "@/types/iep";
@@ -77,7 +78,7 @@ export default function TeacherProfileForm({ profile, onClose, onSaved }: Props)
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <Dialog onClose={onClose} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-slate-900 text-white">
@@ -87,7 +88,7 @@ export default function TeacherProfileForm({ profile, onClose, onSaved }: Props)
             </div>
             <div>
               <h2 className="text-base font-bold text-white">Your Teacher Profile</h2>
-              <p className="text-xs text-slate-400">Used to generate first-day "About Me" materials</p>
+              <p className="text-xs text-slate-400">Used to generate first-day teacher introduction materials.</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
@@ -261,6 +262,6 @@ export default function TeacherProfileForm({ profile, onClose, onSaved }: Props)
           </div>
         </form>
       </div>
-    </div>
+    </Dialog>
   );
 }

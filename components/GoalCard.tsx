@@ -1,6 +1,9 @@
 "use client";
 // components/GoalCard.tsx — Interactive goal tracking card with SE 3000 AI Generator trigger
 
+import { compareObservations, validateValue } from "@/lib/goalValidation";
+import { validDate } from "@/lib/dates";
+import { localDate } from "@/lib/dates";
 import { useState } from "react";
 import {
   ChevronDown,
@@ -52,7 +55,7 @@ const UNIT_LABELS: Record<string, string> = {
   minutes: "min",
   trials: "trials",
   rating_scale: "/ 5",
-  frequency: "CWS/min",
+  frequency: "per session",
 };
 
 function TrendBadge({ trend }: { trend: TrendResult }) {
@@ -96,7 +99,8 @@ export default function GoalCard({
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
-  const [logDate, setLogDate] = useState(new Date().toISOString().split("T")[0]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [logDate, setLogDate] = useState(localDate());
   const [logValue, setLogValue] = useState("");
   const [logNote, setLogNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -108,15 +112,16 @@ export default function GoalCard({
   async function handleSaveLog(e: React.FormEvent) {
     e.preventDefault();
     const val = parseFloat(logValue);
-    if (isNaN(val)) {
-      setError("Please enter a valid number.");
+    const invalid = validateValue(goal, val) || (!validDate(logDate) ? "Enter a valid observation date." : null);
+    if (invalid) {
+      setError(invalid);
       return;
     }
     setSaving(true);
     setError("");
     try {
-      await db.progressLogs.add({
-        id: uuidv4(),
+      await db.progressLogs.put({
+        id: editingId ?? uuidv4(),
         profileId,
         goalId: goal.id,
         date: logDate,
@@ -124,6 +129,7 @@ export default function GoalCard({
         note: logNote || undefined,
         createdAt: new Date().toISOString(),
       });
+      setEditingId(null);
       setLogValue("");
       setLogNote("");
       setLogOpen(false);
@@ -136,7 +142,7 @@ export default function GoalCard({
   }
 
   const latestEntry =
-    entries.length > 0 ? entries.reduce((a, b) => (a.date >= b.date ? a : b)) : null;
+    entries.length > 0 ? entries.reduce((a, b) => (compareObservations(a, b) >= 0 ? a : b)) : null;
 
   return (
     <div className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between">
@@ -254,7 +260,7 @@ export default function GoalCard({
               </p>
               <div className="space-y-1.5">
                 {[...entries]
-                  .sort((a, b) => b.date.localeCompare(a.date))
+                  .sort((a, b) => compareObservations(b, a))
                   .slice(0, 4)
                   .map((e) => (
                     <div key={e.id} className="flex items-start gap-2 text-xs bg-white p-2 rounded-lg border border-gray-200/80 shadow-2xs">
@@ -266,6 +272,7 @@ export default function GoalCard({
                       </span>
                       <span className="font-extrabold text-gray-900">{e.value}{unit}</span>
                       {e.note && <span className="text-gray-600 truncate">{e.note}</span>}
+                      <button className="text-indigo-700" onClick={() => {setEditingId(e.id);setLogDate(e.date);setLogValue(String(e.value));setLogNote(e.note ?? "");setLogOpen(true);}}>Correct</button>
                     </div>
                   ))}
               </div>

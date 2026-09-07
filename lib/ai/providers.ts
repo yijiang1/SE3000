@@ -23,7 +23,7 @@ export const DEFAULT_MUSIC_PROVIDER_ORDER: MusicProviderId[] = ["minimax"];
 export const TEXT_PROVIDER_LABELS: Record<TextProviderId, string> = {
   gemini: "Google Gemini 2.5 Flash",
   deepseek: "DeepSeek Chat (V3)",
-  kimi: "Kimi K2 (Moonshot AI)",
+  kimi: "Moonshot v1 8K",
   openai: "OpenAI GPT-4o mini",
 };
 
@@ -89,12 +89,7 @@ export const MUSIC_PROVIDER_ENV: Record<MusicProviderId, string[]> = {
   minimax: ["MINIMAX_API_KEY"],
 };
 
-const ALL_PROVIDER_LABELS: Record<string, string> = {
-  ...TEXT_PROVIDER_LABELS,
-  ...TTS_PROVIDER_LABELS,
-  ...VIDEO_PROVIDER_LABELS,
-  ...MUSIC_PROVIDER_LABELS,
-};
+const ALL_PROVIDER_LABELS: Record<string, string> = {gemini:"Google Gemini",deepseek:"DeepSeek",kimi:"Moonshot",openai:"OpenAI",minimax:"MiniMax",kling:"Kling AI"};
 
 /** Human-readable name for any provider id, across all capabilities. Falls back to "Local Engine" for undefined (offline synthesis) and to the raw id for anything unrecognized. */
 export function providerDisplayName(id: string | undefined): string {

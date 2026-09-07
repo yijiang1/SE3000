@@ -1,3 +1,5 @@
+import { validOutput } from "@/lib/schemas";
+import { generationRoute } from "@/lib/apiGuard";
 // app/api/generate/music/route.ts — Lyria 3 Music & Audio synthesizer
 
 import { NextRequest, NextResponse } from "next/server";
@@ -7,9 +9,8 @@ import { generateJSON } from "@/lib/ai/textGen";
 import { generateRealMusic } from "@/lib/ai/musicGen";
 import { estimateTextCost, MUSIC_COST_ESTIMATE, type ProviderPreferences } from "@/lib/ai/providers";
 
-export async function POST(req: NextRequest) {
+export const POST = generationRoute(async (req, body) => {
   try {
-    const body = await req.json();
     const ctx: GenerationContext = body.context;
     const purpose: MusicContent["purpose"] = body.purpose || "mnemonic_song";
     const durationType: "clip" | "pro" = body.durationType || "clip"; // clip ~30s, pro ~2-3min
@@ -53,7 +54,7 @@ Respond with valid JSON matching this exact structure:
 }
 `.trim();
 
-    const lyricsAi = await generateJSON(promptText, { temperature: 0.5, preferredOrder: providerPreferences?.text });
+    const lyricsAi = await generateJSON(promptText, { temperature: 0.5, validate: (value) => validOutput("music", value), preferredOrder: providerPreferences?.text });
     const composition: MusicContent =
       lyricsAi?.json || {
         title: `${studentInterest} ${purpose === "calming_focus" ? "Peaceful Focus Zone" : "Skill Power Song"}`,
@@ -101,16 +102,17 @@ Respond with valid JSON matching this exact structure:
 
     return NextResponse.json({
       content,
-      modelUsed: realMusic?.model || `lyria-3-${durationType}`,
+      modelUsed: realMusic?.model || lyricsAi?.model || "local-music-preview",
       provider: realMusic?.provider || lyricsAi?.provider,
-      costEstimate: realMusic
-        ? MUSIC_COST_ESTIMATE[realMusic.provider]
-        : lyricsAi
-        ? estimateTextCost(lyricsAi.provider, durationType === "clip" ? 0.04 : 0.08)
-        : 0.0,
+      usageStages: [
+        ...(lyricsAi ? [{modelUsed:lyricsAi.model,provider:lyricsAi.provider,costEstimate:estimateTextCost(lyricsAi.provider,durationType === "clip" ? 0.04 : 0.08)}] : []),
+        ...(realMusic ? [{modelUsed:realMusic.model,provider:realMusic.provider,costEstimate:MUSIC_COST_ESTIMATE[realMusic.provider]}] : []),
+      ],
+      costEstimate: (realMusic ? MUSIC_COST_ESTIMATE[realMusic.provider] : 0) + (lyricsAi ? estimateTextCost(lyricsAi.provider, durationType === "clip" ? 0.04 : 0.08) : 0),
+
     });
   } catch (error: any) {
     console.error("Music generation error:", error);
     return NextResponse.json({ error: error.message || "Failed to generate music" }, { status: 500 });
   }
-}
+});

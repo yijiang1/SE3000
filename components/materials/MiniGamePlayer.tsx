@@ -1,7 +1,8 @@
 "use client";
 // components/materials/MiniGamePlayer.tsx — Interactive browser-based mini-game engine
 
-import { useState } from "react";
+import { localDate } from "@/lib/dates";
+import { useEffect, useState } from "react";
 import {
   Gamepad2,
   Sparkles,
@@ -12,7 +13,8 @@ import {
   HelpCircle
 } from "lucide-react";
 import { clsx } from "clsx";
-import type { MiniGameContent } from "@/types/iep";
+import { validateValue } from "@/lib/goalValidation";
+import type { IEPGoal, MiniGameContent } from "@/types/iep";
 import db from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
 
@@ -41,6 +43,16 @@ export default function MiniGamePlayer({
   onObservationLogged,
   onClose
 }: Props) {
+  const [linkedGoal, setLinkedGoal] = useState<IEPGoal | null>(null);
+  const [measuredValue, setMeasuredValue] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [attempts, setAttempts] = useState(0);
+  useEffect(() => {
+    let live = true;
+    if (profileId && goalId) void db.profiles.get(profileId).then((p) => { if (live) setLinkedGoal(p?.goals.find((g) => g.id === goalId) ?? null); }).catch(() => { if (live) setFeedback("Could not load the linked goal."); });
+    return () => { live = false; };
+  }, [profileId, goalId]);
+  const sortItems = (content.sortingBuckets ?? []).flatMap((b) => b.items.map((text, index) => ({id:`${b.id}:${index}`, text, bucketId:b.id})));
   // Matching Engine State
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
@@ -89,6 +101,7 @@ export default function MiniGamePlayer({
   }
 
   function checkMatch(pId: string, mId: string) {
+    setAttempts((n) => n + 1);
     if (pId === mId) {
       const nextMatched = [...matchedPairs, pId];
       setMatchedPairs(nextMatched);
@@ -98,10 +111,9 @@ export default function MiniGamePlayer({
         setGameCompleted(true);
       }
     } else {
-      setTimeout(() => {
-        setSelectedPrompt(null);
-        setSelectedMatch(null);
-      }, 700);
+      setFeedback("That pair does not match. Try again.");
+      setSelectedPrompt(null);
+      setSelectedMatch(null);
     }
   }
 
@@ -127,15 +139,16 @@ export default function MiniGamePlayer({
   }
 
   // 3. SORTING HANDLER
-  function handleSortItem(item: string, bucketId: string) {
-    const updated = { ...placedItems, [item]: bucketId };
-    setPlacedItems(updated);
-
-    // Check if all items sorted
-    const totalItems = content.sortingBuckets?.reduce((acc, b) => acc + b.items.length, 0) || 0;
-    if (Object.keys(updated).length >= totalItems) {
-      setGameCompleted(true);
+  function handleSortItem(itemId: string, bucketId: string) {
+    if (placedItems[itemId]) return;
+    setAttempts((n) => n + 1);
+    if (sortItems.find((i) => i.id === itemId)?.bucketId !== bucketId) {
+      setFeedback("That item belongs in another category. Try again."); return;
     }
+    setFeedback("");
+    const updated = { ...placedItems, [itemId]: bucketId };
+    setPlacedItems(updated);
+    if (Object.keys(updated).length === sortItems.length) setGameCompleted(true);
   }
 
   // 4. SEQUENCING HANDLER (Move item up/down)
@@ -146,10 +159,11 @@ export default function MiniGamePlayer({
     reordered.splice(toIdx, 0, moved);
     setSequenceItems(reordered);
 
-    const isAllCorrect = reordered.every((item, idx) => item.order === idx + 1);
-    if (isAllCorrect) {
-      setGameCompleted(true);
-    }
+  }
+  function checkSequence() {
+    setAttempts((n) => n + 1);
+    if (sequenceItems.every((item, idx) => item.order === idx + 1)) setGameCompleted(true);
+    else setFeedback("Some steps are out of order. Rearrange them and check again.");
   }
 
   // Log Game Observation into IndexedDB
@@ -157,30 +171,35 @@ export default function MiniGamePlayer({
     if (!profileId || !goalId || isLogging || loggedSuccess) return;
     setIsLogging(true);
     try {
-      let measuredValue = 100; // default percentage or trials score
-      if (engineType === "multiple_choice" && content.quizQuestions) {
-        measuredValue = Math.round((quizScore / content.quizQuestions.length) * 100);
-      }
+      const current = await db.profiles.get(profileId);
+      const goal = current?.goals.find((g) => g.id === goalId);
+      if (!goal) throw new Error("The linked goal no longer exists.");
+      const value = measuredValue.trim() ? Number(measuredValue) : NaN;
+      const invalid = validateValue(goal, value);
+      if (invalid) throw new Error(invalid);
 
       await db.progressLogs.add({
         id: uuidv4(),
         profileId,
         goalId,
-        date: new Date().toISOString().split("T")[0],
-        value: measuredValue,
-        note: `SE 3000 Mini-Game: ${content.title} (${engineType}) — Score: ${measuredValue}%`,
+        date: localDate(),
+        value,
+        note: `SE 3000 Mini-Game: ${content.title} (${engineType}) — Teacher-reviewed observation: ${value} ${goal.measurementUnit}; ${engineType === "multiple_choice" ? `${quizScore}/${content.quizQuestions?.length} correct` : `${attempts} attempts; completed with correction permitted`}`,
         createdAt: new Date().toISOString(),
       });
       setLoggedSuccess(true);
       onObservationLogged?.();
     } catch (e) {
-      console.error("Failed to log mini-game observation:", e);
+      setFeedback(e instanceof Error ? e.message : "Could not save observation.");
     } finally {
       setIsLogging(false);
     }
   }
 
   function handleResetGame() {
+    setMeasuredValue("");
+    setFeedback("");
+    setAttempts(0);
     setSelectedPrompt(null);
     setSelectedMatch(null);
     setMatchedPairs([]);
@@ -235,6 +254,7 @@ export default function MiniGamePlayer({
 
       {/* ─── Game Content Container ─────────────────────────────── */}
       <div className="p-6 sm:p-8 min-h-[380px] flex flex-col justify-center">
+        {feedback && <p role="status" className="mb-4 text-amber-200">{feedback}</p>}
         {/* GAME COMPLETED BANNER */}
         {gameCompleted ? (
           <div className="text-center py-8 space-y-4 max-w-md mx-auto">
@@ -244,8 +264,14 @@ export default function MiniGamePlayer({
             <h3 className="text-2xl font-black text-white">Victory! Mission Accomplished!</h3>
             <p className="text-sm text-emerald-300 font-semibold">{content.successMessage}</p>
 
-            {profileId && goalId && (
+            <p>{engineType === "multiple_choice" ? `${quizScore} of ${content.quizQuestions?.length} answers correct` : `Completed after ${attempts} attempts. Corrections were allowed.`}</p>
+            {profileId && goalId && linkedGoal && (
               <div className="pt-4 flex flex-col items-center gap-2">
+                <p className="text-sm">Review the goal: {linkedGoal.goalText}</p>
+                <label className="text-sm">Observed value ({linkedGoal.measurementUnit}{linkedGoal.measurementUnit === "trials" ? ` out of ${linkedGoal.trialsDenominator}` : ""})
+                  <input type="number" step="any" value={measuredValue} onChange={(e) => setMeasuredValue(e.target.value)} className="block mt-2 rounded p-2 text-slate-900" />
+                </label>
+                <p className="text-xs text-slate-300">Enter an actual observation in this goal&apos;s unit. Game completion is not a mastery score.</p>
                 <button
                   onClick={handleLogObservation}
                   disabled={loggedSuccess || isLogging}
@@ -262,7 +288,7 @@ export default function MiniGamePlayer({
                     </>
                   ) : (
                     <>
-                      <PlusCircle className="w-5 h-5" /> Log Score to IEP Goal Progress
+                      <PlusCircle className="w-5 h-5" /> Save reviewed observation
                     </>
                   )}
                 </button>
@@ -406,72 +432,13 @@ export default function MiniGamePlayer({
               </div>
             )}
 
-            {/* ENGINE 3: SORTING */}
-            {engineType === "sorting" && content.sortingBuckets && (
-              <div className="max-w-3xl mx-auto w-full space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {content.sortingBuckets.map((bucket) => {
-                    const bucketItems = bucket.items.filter((item) => placedItems[item] === bucket.id);
-                    return (
-                      <div
-                        key={bucket.id}
-                        className="p-5 rounded-2xl bg-slate-800 border-2 border-dashed border-indigo-500/40 min-h-[180px] flex flex-col"
-                      >
-                        <h4 className="text-sm font-extrabold text-indigo-300 uppercase tracking-wide mb-3">
-                          {bucket.title}
-                        </h4>
-                        <div className="space-y-2 flex-1">
-                          {bucketItems.map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="p-3 rounded-xl bg-indigo-950/70 border border-indigo-500/50 text-xs font-bold text-white flex items-center gap-2"
-                            >
-                              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                              <span>{item}</span>
-                            </div>
-                          ))}
-                          {bucketItems.length === 0 && (
-                            <p className="text-xs text-slate-500 italic text-center py-6">
-                              Click an unsorted item below to place it here
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Unsorted Items Pool */}
-                <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">
-                    Unsorted Items (Click bucket to assign):
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {content.sortingBuckets
-                      .flatMap((b) => b.items)
-                      .filter((item) => !placedItems[item])
-                      .map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="p-2.5 rounded-xl bg-slate-700 border border-slate-600 text-xs font-semibold text-white flex items-center gap-2"
-                        >
-                          <span>{item}</span>
-                          <div className="flex gap-1">
-                            {content.sortingBuckets!.map((b) => (
-                              <button
-                                key={b.id}
-                                onClick={() => handleSortItem(item, b.id)}
-                                className="px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-[10px] font-bold text-white"
-                                title={`Sort into ${b.title}`}
-                              >
-                                {b.title.slice(0, 8)}…
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
+            {/* ENGINE 3: SORTING — stable identities allow duplicate labels. */}
+            {engineType === "sorting" && (
+              <div className="space-y-3">
+                {sortItems.map((item) => <div key={item.id} className="p-3 bg-slate-800 rounded-xl flex flex-wrap items-center gap-3">
+                  <span>{item.text}</span>
+                  {placedItems[item.id] ? <span className="text-emerald-300">✓ {content.sortingBuckets?.find((b) => b.id === placedItems[item.id])?.title}</span> : content.sortingBuckets?.map((bucket) => <button key={bucket.id} onClick={() => handleSortItem(item.id, bucket.id)} className="px-3 py-2 rounded bg-indigo-600">{bucket.title}</button>)}
+                </div>)}
               </div>
             )}
 
@@ -481,6 +448,7 @@ export default function MiniGamePlayer({
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">
                   Reorder the steps into the correct sequence:
                 </span>
+                <button onClick={checkSequence} className="px-4 py-2 rounded bg-indigo-600">Check order</button>
                 {sequenceItems.map((step, idx) => (
                   <div
                     key={step.id}

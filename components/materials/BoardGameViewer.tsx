@@ -1,6 +1,7 @@
 "use client";
 // components/materials/BoardGameViewer.tsx — Interactive & Printable Board Game
 
+import { printMaterial } from "@/lib/print";
 import { useState } from "react";
 import {
   Dices,
@@ -79,7 +80,7 @@ export default function BoardGameViewer({ content, onClose }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden">
+    <div data-print-material className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden">
       {/* ─── Header ─────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-indigo-900 to-purple-900 text-white print:hidden">
         <div>
@@ -116,7 +117,7 @@ export default function BoardGameViewer({ content, onClose }: Props) {
           </div>
 
           <button
-            onClick={() => window.print()}
+            onClick={(e) => printMaterial(e.currentTarget)}
             className="p-2 rounded-lg bg-indigo-800/80 hover:bg-indigo-700 text-white transition-colors"
             title="Print Game Set"
           >

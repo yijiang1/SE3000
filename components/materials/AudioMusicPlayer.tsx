@@ -1,5 +1,5 @@
 "use client";
-// components/materials/AudioMusicPlayer.tsx — Lyria 3 Music & Melodic Player
+// components/materials/AudioMusicPlayer.tsx — Music Music & Melodic Player
 
 import { useState, useRef, useEffect } from "react";
 import { Play, Pause, RotateCcw, Music, Sparkles, Volume2, Download, Disc3 } from "lucide-react";
@@ -140,7 +140,7 @@ export default function AudioMusicPlayer({ content, onClose }: Props) {
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                 {hasRealAudio
                   ? "AI-Generated Track"
-                  : `Lyria 3 ${content.modelUsed === "lyria-3-pro" ? "Pro Track" : "Clip (30s)"}`}
+                  : `Local tone preview (${content.durationSeconds}s)`}
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300">
                 {content.purpose.replace("_", " ")}

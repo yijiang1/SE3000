@@ -1,6 +1,7 @@
 "use client";
 // components/AddStudentForm.tsx — Modal form to create a new student with expanded Learning Profile
 
+import Dialog from "@/components/Dialog";
 import { useState } from "react";
 import { X, UserPlus, Sparkles, BookOpen, Heart, Activity } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
@@ -15,6 +16,7 @@ import { clsx } from "clsx";
 
 interface Props {
   onClose: () => void;
+  initialProfile?: StudentIEPProfile;
   onCreated: (profile: StudentIEPProfile) => void;
 }
 
@@ -48,24 +50,24 @@ const MODALITY_OPTIONS: { id: LearningModality; label: string }[] = [
   { id: "solitary", label: "Solitary / Independent" },
 ];
 
-export default function AddStudentForm({ onClose, onCreated }: Props) {
+export default function AddStudentForm({ onClose, onCreated, initialProfile }: Props) {
   const [activeTab, setActiveTab] = useState<"general" | "learning">("general");
 
   // General Fields
-  const [initials, setInitials] = useState("");
-  const [grade, setGrade] = useState("");
-  const [eligibility, setEligibility] = useState("");
-  const [reviewDate, setReviewDate] = useState("");
-  const [plaafp, setPlaafp] = useState("");
+  const [initials, setInitials] = useState(initialProfile?.studentInitials ?? "");
+  const [grade, setGrade] = useState(initialProfile?.grade ?? "");
+  const [eligibility, setEligibility] = useState(initialProfile?.primaryEligibility ?? "");
+  const [reviewDate, setReviewDate] = useState(initialProfile?.iepAnnualReviewDate ?? "");
+  const [plaafp, setPlaafp] = useState(initialProfile?.plaafpSummary ?? "");
 
   // Learning Profile Fields
-  const [readingLevel, setReadingLevel] = useState("2nd Grade");
-  const [comprehensionLevel, setComprehensionLevel] = useState("Literal comprehension, responds well to visual prompts");
-  const [selectedCommunication, setSelectedCommunication] = useState<CommunicationNeed[]>(["verbal", "visual_supports"]);
-  const [selectedSensory, setSelectedSensory] = useState<SensoryConsideration[]>(["fidget_needs"]);
-  const [interestsInput, setInterestsInput] = useState("Space Exploration, Dinosaurs, Lego");
-  const [selectedModalities, setSelectedModalities] = useState<LearningModality[]>(["visual", "hands_on"]);
-  const [additionalNotes, setAdditionalNotes] = useState("");
+  const [readingLevel, setReadingLevel] = useState(initialProfile?.learningProfile?.readingLevel ?? "");
+  const [comprehensionLevel, setComprehensionLevel] = useState(initialProfile?.learningProfile?.comprehensionLevel ?? "");
+  const [selectedCommunication, setSelectedCommunication] = useState<CommunicationNeed[]>(initialProfile?.learningProfile?.communicationNeeds ?? []);
+  const [selectedSensory, setSelectedSensory] = useState<SensoryConsideration[]>(initialProfile?.learningProfile?.sensoryConsiderations ?? []);
+  const [interestsInput, setInterestsInput] = useState(initialProfile?.learningProfile?.interests.join(", ") ?? "");
+  const [selectedModalities, setSelectedModalities] = useState<LearningModality[]>(initialProfile?.learningProfile?.preferredModality ?? []);
+  const [additionalNotes, setAdditionalNotes] = useState(initialProfile?.learningProfile?.additionalNotes ?? "");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -92,19 +94,19 @@ export default function AddStudentForm({ onClose, onCreated }: Props) {
 
     const now = new Date().toISOString();
     const profile: StudentIEPProfile = {
-      id: uuidv4(),
+      id: initialProfile?.id ?? uuidv4(),
       studentInitials: initials.toUpperCase().slice(0, 4),
       grade,
       primaryEligibility: eligibility,
       iepAnnualReviewDate: reviewDate,
       plaafpSummary: plaafp || "No PLAAFP summary provided.",
       learningProfile: {
-        readingLevel: readingLevel.trim() || "Grade level",
-        comprehensionLevel: comprehensionLevel.trim() || "Age appropriate",
-        communicationNeeds: selectedCommunication.length > 0 ? selectedCommunication : ["verbal"],
+        readingLevel: readingLevel.trim(),
+        comprehensionLevel: comprehensionLevel.trim(),
+        communicationNeeds: selectedCommunication,
         sensoryConsiderations: selectedSensory,
-        interests: interestsList.length > 0 ? interestsList : ["Animals", "Science"],
-        preferredModality: selectedModalities.length > 0 ? selectedModalities : ["visual"],
+        interests: interestsList,
+        preferredModality: selectedModalities,
         additionalNotes: additionalNotes.trim() || undefined,
       },
       goals: [],
@@ -115,7 +117,14 @@ export default function AddStudentForm({ onClose, onCreated }: Props) {
     };
 
     try {
-      await db.profiles.add(profile);
+      await db.transaction("rw", db.profiles, async () => {
+        if (initialProfile) {
+          const current = await db.profiles.get(initialProfile.id);
+          if (!current) throw new Error("Student no longer exists.");
+          Object.assign(profile, {goals:current.goals,services:current.services,accommodations:current.accommodations,createdAt:current.createdAt});
+          await db.profiles.put(profile);
+        } else await db.profiles.add(profile);
+      });
       onCreated(profile);
     } catch {
       setError("Failed to save student profile. Please try again.");
@@ -125,7 +134,7 @@ export default function AddStudentForm({ onClose, onCreated }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <Dialog onClose={onClose} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-slate-900 text-white">
@@ -134,7 +143,7 @@ export default function AddStudentForm({ onClose, onCreated }: Props) {
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Add Student Profile</h2>
+              <h2 className="text-base font-bold text-white">{initialProfile ? "Edit Student Profile" : "Add Student Profile"}</h2>
               <p className="text-xs text-slate-400">SE 3000 Individualized Learning Record</p>
             </div>
           </div>
@@ -296,7 +305,7 @@ export default function AddStudentForm({ onClose, onCreated }: Props) {
                   className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300"
                 />
                 <p className="text-[10px] text-purple-700 mt-1">
-                  ✨ Used by Gemini & Lyria to theme all generated materials around the student's passions.
+                  ✨ Used by Gemini & Lyria to theme all generated materials around the student&apos;s passions.
                 </p>
               </div>
 
@@ -427,6 +436,6 @@ export default function AddStudentForm({ onClose, onCreated }: Props) {
           </div>
         </form>
       </div>
-    </div>
+    </Dialog>
   );
 }

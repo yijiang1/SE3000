@@ -1,12 +1,15 @@
 "use client";
 // components/AccommodationList.tsx — Categorized accommodation badges
 
+import { useState } from "react";
+import db from "@/lib/db";
 import { ClipboardList, BookOpen, Building2 } from "lucide-react";
 import { clsx } from "clsx";
 import type { StudentIEPProfile, Accommodation } from "@/types/iep";
 
 interface Props {
   profile: StudentIEPProfile;
+  onChanged?: () => void;
 }
 
 const CATEGORY_CONFIG = {
@@ -70,7 +73,24 @@ function AccommodationGroup({
   );
 }
 
-export default function AccommodationList({ profile }: Props) {
+export default function AccommodationList({ profile, onChanged }: Props) {
+  const [text, setText] = useState("");
+  const [category, setCategory] = useState<Accommodation["category"]>("instructional");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function save(change: (current: StudentIEPProfile) => void) {
+    setBusy(true); setError("");
+    try {
+      await db.transaction("rw", db.profiles, async () => {
+        const current = await db.profiles.get(profile.id);
+        if (!current) throw new Error("Student no longer exists.");
+        change(current); current.updatedAt = new Date().toISOString();
+        await db.profiles.put(current);
+      });
+      onChanged?.();
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not save accommodation."); }
+    finally { setBusy(false); }
+  }
   const { accommodations } = profile;
   const byCategory = {
     testing: accommodations.filter((a) => a.category === "testing"),
@@ -81,6 +101,15 @@ export default function AccommodationList({ profile }: Props) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
       <h3 className="text-sm font-semibold text-gray-700 mb-3">Accommodations</h3>
+      {error && <p role="alert" className="text-red-700">{error}</p>}
+      <details className="mb-3"><summary className="text-sm text-indigo-700">Manage accommodations</summary>
+        <div className="space-y-2 my-2">
+          {accommodations.map((a) => <label key={a.id} className="block text-sm"><input type="checkbox" checked={a.active} disabled={busy} onChange={() => save((p) => { const current = p.accommodations.find((item) => item.id === a.id); if (current) current.active = !current.active; })} /> {a.text}</label>)}
+          <label className="block">New accommodation<input value={text} onChange={(e) => setText(e.target.value)} className="block border p-2 rounded w-full" /></label>
+          <label>Category<select value={category} onChange={(e) => setCategory(e.target.value as Accommodation["category"])} className="border rounded p-2">{Object.keys(CATEGORY_CONFIG).map((c) => <option key={c} value={c}>{c}</option>)}</select></label>
+          <button disabled={busy || !text.trim()} className="ml-3 text-indigo-700" onClick={() => save((p) => {p.accommodations.push({id:crypto.randomUUID(),text:text.trim(),category,active:true});setText("");})}>Add accommodation</button>
+        </div>
+      </details>
       <div className="space-y-3">
         {(Object.keys(byCategory) as Array<keyof typeof byCategory>).map((cat) => (
           <AccommodationGroup key={cat} category={cat} items={byCategory[cat]} />

@@ -1,5 +1,7 @@
 // lib/summary.ts — Plain-language progress summary generator
 
+import { compareObservations } from "./goalValidation";
+import { localDate } from "@/lib/dates";
 import type { IEPGoal, ProgressLogEntry, StudentIEPProfile } from "@/types/iep";
 import { computeTrend } from "./trending";
 
@@ -31,9 +33,9 @@ export function generateGoalSummary(
 ): string {
   const name = profile.studentInitials;
   const sorted = [...entries].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    compareObservations
   );
-  const today = new Date().toISOString().split("T")[0];
+  const today = localDate();
   const trend = computeTrend(goal, sorted);
 
   if (sorted.length === 0) {
@@ -53,7 +55,7 @@ export function generateGoalSummary(
   } else if (trend.status === "at_risk" && trend.projectedValue !== null) {
     trendSentence = `At the current rate, ${name} is projected to reach approximately ${trend.projectedValue}${unit} by the review date, which is close to but may fall short of the ${goal.targetValue}${unit} target. Status: At Risk. Continued monitoring and support are recommended.`;
   } else if (trend.status === "off_track" && trend.projectedValue !== null) {
-    trendSentence = `At the current rate, ${name} is projected to reach only ${trend.projectedValue}${unit} by the review date — below the ${goal.targetValue}${unit} target. Status: Off Track. Adjustment to supports or instructional strategies may be warranted.`;
+    trendSentence = `At the current rate, ${name} is projected to reach ${trend.projectedValue}${unit} by the review date — short of the goal of ${goal.targetValue}${unit} target. Status: Off Track. Adjustment to supports or instructional strategies may be warranted.`;
   } else {
     trendSentence = `Insufficient data is available to project progress toward the ${goal.targetValue}${unit} target.`;
   }

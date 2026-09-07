@@ -1,6 +1,7 @@
 "use client";
 // components/MaterialGeneratorModal.tsx — Unified AI Materials Hub modal
 
+import Dialog from "@/components/Dialog";
 import { useState, useEffect } from "react";
 import {
   Sparkles,
@@ -95,7 +96,7 @@ const FORMAT_OPTIONS: FormatOption[] = [
   },
   {
     type: "music",
-    title: "Lyria 3 Music Track",
+    title: "Music Track",
     badge: "DeepMind Lyria 3",
     description: "Mnemonic rhyming song, calming focus lo-fi, or reward celebration jingle tailored to the goal.",
     icon: Music,
@@ -220,7 +221,7 @@ export default function MaterialGeneratorModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <Dialog onClose={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* ─── Header ─────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-slate-900 to-indigo-950 text-white">
@@ -376,7 +377,7 @@ export default function MaterialGeneratorModal({
           {selectedFormat === "music" && (
             <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 space-y-2">
               <label className="block text-xs font-bold text-amber-900 uppercase">
-                Lyria 3 Music Purpose:
+                Music Purpose:
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
@@ -514,6 +515,6 @@ export default function MaterialGeneratorModal({
           </button>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

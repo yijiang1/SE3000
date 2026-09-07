@@ -1,3 +1,4 @@
+import { generationRoute } from "@/lib/apiGuard";
 // app/api/generate/narration/route.ts — OpenAI TTS audio narration generator
 
 import { NextRequest, NextResponse } from "next/server";
@@ -5,9 +6,8 @@ import type { GenerationContext, NarrationContent } from "@/types/iep";
 import { generateSpeech } from "@/lib/ai/ttsGen";
 import { TTS_COST_ESTIMATE, type ProviderPreferences } from "@/lib/ai/providers";
 
-export async function POST(req: NextRequest) {
+export const POST = generationRoute(async (req, body) => {
   try {
-    const body = await req.json();
     const ctx: GenerationContext = body.context;
     const voice: NarrationContent["voice"] = body.voice || "nova";
     const speed: number = typeof body.speed === "number" ? body.speed : 0.9;
@@ -57,4 +57,4 @@ export async function POST(req: NextRequest) {
     console.error("Narration generation error:", error);
     return NextResponse.json({ error: error.message || "Failed to generate narration" }, { status: 500 });
   }
-}
+});

@@ -27,6 +27,7 @@ export interface GenerateOptions {
   narrationText?: string;
   worksheetSpec?: WorksheetSpec;
   plaafp?: PLAAFPAnalysis;
+  accommodations?: string[];
 }
 
 /** Which provider-preference bucket a material type's generation is driven by. */
@@ -121,6 +122,7 @@ async function runOneGeneration(
   };
 
   await db.generatedMaterials.put(tempRecord);
+  const heartbeat = setInterval(() => { void db.generatedMaterials.update(materialId, { updatedAt: new Date().toISOString() }).catch(() => {}); }, 15_000);
 
   try {
     const res = await fetch(endpoint, {
@@ -159,8 +161,10 @@ async function runOneGeneration(
       updatedAt: new Date().toISOString(),
     };
 
-    await db.generatedMaterials.put(readyRecord);
-    await logUsage(type, readyRecord.modelUsed, readyRecord.generationCostEstimate || 0, data.provider);
+    await db.generatedMaterials.update(materialId, (row) => { Object.assign(row, readyRecord); });
+    if (Array.isArray(data.usageStages) && data.usageStages.length) {
+      for (const stage of data.usageStages) await logUsage(type, stage.modelUsed, stage.costEstimate, stage.provider);
+    } else await logUsage(type, readyRecord.modelUsed, readyRecord.generationCostEstimate || 0, data.provider);
     return readyRecord;
   } catch (err: any) {
     const errorRecord: GeneratedMaterial = {
@@ -169,9 +173,9 @@ async function runOneGeneration(
       error: err.message || "Failed to generate material",
       updatedAt: new Date().toISOString(),
     };
-    await db.generatedMaterials.put(errorRecord);
-    throw err;
-  }
+    await db.generatedMaterials.update(materialId, (row) => { Object.assign(row, errorRecord); });
+    throw Object.assign(err instanceof Error ? err : new Error(String(err)), { material: errorRecord });
+  } finally { clearInterval(heartbeat); }
 }
 
 export async function generateAndSaveMaterial(
@@ -182,6 +186,7 @@ export async function generateAndSaveMaterial(
   options: GenerateOptions = {}
 ): Promise<GeneratedMaterial> {
   const context = buildGenerationContext(profile, goal, logs);
+  if (options.accommodations !== undefined) context.accommodations = options.accommodations;
   const { endpoint, payload } = buildEndpointAndPayload(type, context, profile, options);
 
   const settings = await getAppSettings();
@@ -206,20 +211,17 @@ export async function generateMaterialVariants(
   options: GenerateOptions = {}
 ): Promise<GeneratedMaterial[]> {
   const context = buildGenerationContext(profile, goal, logs);
+  if (options.accommodations !== undefined) context.accommodations = options.accommodations;
   const { endpoint, payload: basePayload } = buildEndpointAndPayload(type, context, profile, options);
   const capability = CAPABILITY_FOR_MATERIAL_TYPE[type];
 
   const settled = await Promise.allSettled(
     providerIds.map(async (providerId) => {
-      const payload = { ...basePayload, providerPreferences: { [capability]: [providerId] } };
+      const payload = { ...basePayload, providerPreferences: { music: [], video: [], [capability]: [providerId] } };
       const result = await runOneGeneration(profile, goal, type, endpoint, payload, options);
-      // A forced single-provider request can still silently fall back to the
-      // local synthesizer (invalid/expired key, transient provider error)
-      // without throwing. Label the card with what was actually REQUESTED in
-      // that case, so two failed providers don't render as identical,
-      // unlabeled "Local Engine" cards.
+      // Keep requested and actual providers separate when local fallback is used.
       if (result.status === "ready" && !result.provider) {
-        const tagged: GeneratedMaterial = { ...result, provider: providerId };
+        const tagged: GeneratedMaterial = { ...result, requestedProvider: providerId };
         await db.generatedMaterials.put(tagged);
         return tagged;
       }
@@ -231,8 +233,7 @@ export async function generateMaterialVariants(
   // rejection, so every settled result — fulfilled or rejected — has a
   // corresponding row in Dexie already; just surface what we can here.
   return settled
-    .filter((r): r is PromiseFulfilledResult<GeneratedMaterial> => r.status === "fulfilled")
-    .map((r) => r.value);
+    .flatMap((r) => r.status === "fulfilled" ? [r.value] : r.reason?.material ? [r.reason.material as GeneratedMaterial] : []);
 }
 
 export async function deleteMaterial(materialId: string): Promise<void> {
@@ -245,13 +246,14 @@ export async function deleteMaterial(materialId: string): Promise<void> {
 /**
  * Remove orphaned "generating" placeholder records left behind when a
  * generation request was interrupted (tab closed, navigation, hard reload).
- * Generation only runs within a live page session, so any such record found
- * on load is stale. Returns the number of records purged.
+ * Live requests refresh updatedAt every 15 seconds. Only expired leases
+ * are removed; another tab may still own a generating row. Returns the number of records purged.
  */
 export async function cleanupStaleMaterials(): Promise<number> {
   const stale = await db.generatedMaterials
     .where("status")
     .equals("generating")
+    .filter((m) => Date.now() - Date.parse(m.updatedAt) > 120_000)
     .toArray();
 
   if (stale.length === 0) return 0;

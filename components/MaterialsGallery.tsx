@@ -34,9 +34,9 @@ const TYPE_CONFIG = {
   slide_deck: { label: "Slide Deck", icon: BookOpen, color: "bg-blue-100 text-blue-800 border-blue-200" },
   board_game: { label: "Board Game", icon: Dices, color: "bg-purple-100 text-purple-800 border-purple-200" },
   mini_game: { label: "Mini-Game", icon: Gamepad2, color: "bg-emerald-100 text-emerald-800 border-emerald-200" },
-  music: { label: "Lyria Music", icon: Music, color: "bg-amber-100 text-amber-800 border-amber-200" },
+  music: { label: "Music", icon: Music, color: "bg-amber-100 text-amber-800 border-amber-200" },
   narration: { label: "TTS Narration", icon: Volume2, color: "bg-rose-100 text-rose-800 border-rose-200" },
-  video_clip: { label: "Veo Video", icon: Film, color: "bg-violet-100 text-violet-800 border-violet-200" },
+  video_clip: { label: "Video", icon: Film, color: "bg-violet-100 text-violet-800 border-violet-200" },
   worksheet: { label: "Worksheet", icon: ClipboardList, color: "bg-indigo-100 text-indigo-800 border-indigo-200" },
 };
 

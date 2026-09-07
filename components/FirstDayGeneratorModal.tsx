@@ -3,6 +3,7 @@
 // First-Day Materials categories (Teacher Introduction, Classroom Expectations,
 // Icebreaker Activities, Family Welcome Letter & Getting-to-Know-You Survey)
 
+import Dialog from "@/components/Dialog";
 import { useState, useEffect } from "react";
 import {
   Sparkles,
@@ -265,7 +266,7 @@ export default function FirstDayGeneratorModal({ category, subject, onClose, onM
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <Dialog onClose={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className={clsx("flex items-center justify-between px-6 py-5 border-b border-gray-200 text-white bg-gradient-to-r", meta.headerGradient)}>
@@ -399,6 +400,6 @@ export default function FirstDayGeneratorModal({ category, subject, onClose, onM
           </button>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

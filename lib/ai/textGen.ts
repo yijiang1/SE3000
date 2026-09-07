@@ -25,14 +25,14 @@ interface RawResult {
 }
 
 function isConfigured(id: TextProviderId): boolean {
-  return TEXT_PROVIDER_ENV[id].every((envVar) => {
+  return (TEXT_PROVIDER_ENV[id] ?? []).length > 0 && TEXT_PROVIDER_ENV[id].every((envVar) => {
     const v = process.env[envVar];
     return !!v && v.trim().length > 5;
   });
 }
 
 async function callGemini({ promptText, temperature }: CallOpts): Promise<RawResult> {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY, httpOptions: { timeout: 45_000 } });
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: promptText,
@@ -47,7 +47,7 @@ async function callOpenAICompatible(
   model: string,
   { promptText, temperature }: CallOpts
 ): Promise<RawResult> {
-  const client = new OpenAI({ apiKey, baseURL });
+  const client = new OpenAI({ apiKey, baseURL, timeout: 45_000, maxRetries: 0 });
   const completion = await client.chat.completions.create({
     model,
     messages: [{ role: "user", content: promptText }],
@@ -79,9 +79,9 @@ export interface TextGenResult {
 
 export async function generateJSON(
   promptText: string,
-  opts: { temperature?: number; preferredOrder?: TextProviderId[] } = {}
+  opts: { temperature?: number; preferredOrder?: TextProviderId[]; validate: (value: unknown) => boolean }
 ): Promise<TextGenResult | null> {
-  const order = (opts.preferredOrder?.length ? opts.preferredOrder : DEFAULT_TEXT_PROVIDER_ORDER).filter(
+  const order = (opts.preferredOrder ?? DEFAULT_TEXT_PROVIDER_ORDER).filter(
     isConfigured
   );
 
@@ -93,6 +93,7 @@ export async function generateJSON(
       });
       const cleanJson = rawText.replace(/```json\n?|\n?```/g, "").trim();
       const json = JSON.parse(cleanJson);
+      if (!opts.validate(json)) throw new Error("Provider returned an invalid response shape");
       return { json, provider, model };
     } catch (err: any) {
       console.warn(`[AI text fallback] ${provider} failed:`, err?.message);

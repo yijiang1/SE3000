@@ -1,3 +1,5 @@
+import { validOutput } from "@/lib/schemas";
+import { generationRoute } from "@/lib/apiGuard";
 // app/api/generate/video/route.ts — Veo 3.1 Video generation & storyboard orchestrator
 
 import { NextRequest, NextResponse } from "next/server";
@@ -7,9 +9,8 @@ import { generateJSON } from "@/lib/ai/textGen";
 import { generateRealVideo } from "@/lib/ai/videoGen";
 import { estimateTextCost, VIDEO_COST_ESTIMATE, type ProviderPreferences } from "@/lib/ai/providers";
 
-export async function POST(req: NextRequest) {
+export const POST = generationRoute(async (req, body) => {
   try {
-    const body = await req.json();
     const ctx: GenerationContext = body.context;
     const customPrompt: string | undefined = body.customPrompt;
     const providerPreferences: ProviderPreferences | undefined = body.providerPreferences;
@@ -51,7 +52,7 @@ Respond with valid JSON matching this exact structure:
 }
 `.trim();
 
-    const scriptAi = await generateJSON(promptText, { temperature: 0.4, preferredOrder: providerPreferences?.text });
+    const scriptAi = await generateJSON(promptText, { temperature: 0.4, validate: (value) => validOutput("video_clip", value), preferredOrder: providerPreferences?.text });
     const storyboard: VideoContent =
       scriptAi?.json || {
         title: `${studentInterest} Mastery Story: ${ctx.goal.category.toUpperCase()}`,
@@ -102,16 +103,17 @@ Respond with valid JSON matching this exact structure:
 
     return NextResponse.json({
       content,
-      modelUsed: realVideo?.model || "veo-3.1-fast",
+      modelUsed: realVideo?.model || scriptAi?.model || "local-storyboard",
       provider: realVideo?.provider || scriptAi?.provider,
-      costEstimate: realVideo
-        ? VIDEO_COST_ESTIMATE[realVideo.provider]
-        : scriptAi
-        ? estimateTextCost(scriptAi.provider, 0.4)
-        : 0.0,
+      usageStages: [
+        ...(scriptAi ? [{modelUsed:scriptAi.model,provider:scriptAi.provider,costEstimate:estimateTextCost(scriptAi.provider,0.4)}] : []),
+        ...(realVideo ? [{modelUsed:realVideo.model,provider:realVideo.provider,costEstimate:VIDEO_COST_ESTIMATE[realVideo.provider]}] : []),
+      ],
+      costEstimate: (realVideo ? VIDEO_COST_ESTIMATE[realVideo.provider] : 0) + (scriptAi ? estimateTextCost(scriptAi.provider, 0.4) : 0),
+
     });
   } catch (error: any) {
     console.error("Video generation error:", error);
     return NextResponse.json({ error: error.message || "Failed to generate video" }, { status: 500 });
   }
-}
+});

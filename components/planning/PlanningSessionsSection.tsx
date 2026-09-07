@@ -1,6 +1,7 @@
 "use client";
 // components/planning/PlanningSessionsSection.tsx — dashboard section for saved planning sessions
 
+import Dialog from "@/components/Dialog";
 import { useState } from "react";
 import {
   Sparkles, ClipboardList, Layers, Trash2, PlayCircle, LineChart, X, Loader2, PlusCircle
@@ -115,7 +116,7 @@ export default function PlanningSessionsSection({
           </div>
           <p className="text-sm font-bold text-gray-700">No planning sessions yet</p>
           <p className="text-xs text-gray-400 max-w-sm">
-            Start from a student's present level to generate a PLAAFP, a measurable IEP goal, a scaffolded unit, and aligned worksheets.
+            Start from a student&apos;s present level to generate a PLAAFP, a measurable IEP goal, a scaffolded unit, and aligned worksheets.
           </p>
           <button onClick={onStartNew} className="mt-1 flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700">
             <PlusCircle className="w-4 h-4" /> Start Planning Session
@@ -197,7 +198,7 @@ export default function PlanningSessionsSection({
 
       {/* Unit viewer modal */}
       {viewUnit?.instructionalUnit && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <Dialog onClose={() => setViewUnit(null)} className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-3xl max-h-[95vh] overflow-y-auto">
             <div className="relative">
               <button
@@ -209,7 +210,7 @@ export default function PlanningSessionsSection({
               <InstructionalUnitPanel content={viewUnit.instructionalUnit} onClose={() => setViewUnit(null)} />
             </div>
           </div>
-        </div>
+        </Dialog>
       )}
     </div>
   );

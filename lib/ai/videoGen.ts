@@ -1,3 +1,4 @@
+import { timedFetch } from "./timedFetch";
 // lib/ai/videoGen.ts — multi-provider real video generation with fallback chain
 //
 // Both providers are async job APIs: submit a prompt, poll a task_id until it
@@ -19,7 +20,7 @@ interface RawResult {
 }
 
 function isConfigured(id: VideoProviderId): boolean {
-  return VIDEO_PROVIDER_ENV[id].every((envVar) => {
+  return (VIDEO_PROVIDER_ENV[id] ?? []).length > 0 && VIDEO_PROVIDER_ENV[id].every((envVar) => {
     const v = process.env[envVar];
     return !!v && v.trim().length > 5;
   });
@@ -29,7 +30,8 @@ async function pollUntilDone<T>(
   poll: () => Promise<{ status: "processing" | "success" | "failed"; result?: T }>,
   { intervalMs = 5000, maxAttempts = 36 } = {}
 ): Promise<T> {
-  for (let i = 0; i < maxAttempts; i++) {
+  const deadline = Date.now() + 180_000;
+  for (let i = 0; i < maxAttempts && Date.now() < deadline; i++) {
     const r = await poll();
     if (r.status === "success") return r.result as T;
     if (r.status === "failed") throw new Error("Video generation task failed");
@@ -47,7 +49,7 @@ async function callMiniMaxVideo({ prompt, durationSeconds }: CallOpts): Promise<
   const apiKey = process.env.MINIMAX_API_KEY;
   const groupId = process.env.MINIMAX_GROUP_ID;
 
-  const createRes = await fetch("https://api.minimax.io/v1/video_generation", {
+  const createRes = await timedFetch("https://api.minimax.io/v1/video_generation", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
@@ -63,7 +65,7 @@ async function callMiniMaxVideo({ prompt, durationSeconds }: CallOpts): Promise<
   if (!taskId) throw new Error("MiniMax video: no task_id returned");
 
   const fileId = await pollUntilDone<string>(async () => {
-    const statusRes = await fetch(`https://api.minimax.io/v1/query/video_generation?task_id=${taskId}`, {
+    const statusRes = await timedFetch(`https://api.minimax.io/v1/query/video_generation?task_id=${taskId}`, {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
     if (!statusRes.ok) throw new Error(`MiniMax video status HTTP ${statusRes.status}`);
@@ -75,7 +77,7 @@ async function callMiniMaxVideo({ prompt, durationSeconds }: CallOpts): Promise<
   });
   if (!fileId) throw new Error("MiniMax video: completed task had no file_id");
 
-  const fileRes = await fetch(
+  const fileRes = await timedFetch(
     `https://api.minimax.io/v1/files/retrieve?GroupId=${encodeURIComponent(groupId!)}&file_id=${fileId}`,
     { headers: { Authorization: `Bearer ${apiKey}` } }
   );
@@ -111,7 +113,7 @@ function signKlingJWT(accessKey: string, secretKey: string): string {
 async function callKlingVideo({ prompt }: CallOpts): Promise<RawResult> {
   const token = signKlingJWT(process.env.KLING_ACCESS_KEY!, process.env.KLING_SECRET_KEY!);
 
-  const createRes = await fetch("https://api.klingai.com/v1/videos/text2video", {
+  const createRes = await timedFetch("https://api.klingai.com/v1/videos/text2video", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({
@@ -127,7 +129,7 @@ async function callKlingVideo({ prompt }: CallOpts): Promise<RawResult> {
   if (!taskId) throw new Error("Kling video: no task_id returned");
 
   const videoUrl = await pollUntilDone<string>(async () => {
-    const statusRes = await fetch(`https://api.klingai.com/v1/videos/text2video/${taskId}`, {
+    const statusRes = await timedFetch(`https://api.klingai.com/v1/videos/text2video/${taskId}`, {
       headers: { Authorization: `Bearer ${signKlingJWT(process.env.KLING_ACCESS_KEY!, process.env.KLING_SECRET_KEY!)}` },
     });
     if (!statusRes.ok) throw new Error(`Kling video status HTTP ${statusRes.status}`);
@@ -155,7 +157,7 @@ export interface VideoGenResult {
 export async function generateRealVideo(
   opts: CallOpts & { preferredOrder?: VideoProviderId[] }
 ): Promise<VideoGenResult | null> {
-  const order = (opts.preferredOrder?.length ? opts.preferredOrder : DEFAULT_VIDEO_PROVIDER_ORDER).filter(
+  const order = (opts.preferredOrder ?? DEFAULT_VIDEO_PROVIDER_ORDER).filter(
     isConfigured
   );
 

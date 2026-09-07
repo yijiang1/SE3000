@@ -3,6 +3,7 @@
 // Planning Assistant wizard: Present Level → PLAAFP/Skill Gap → IEP Goal →
 // Accommodations → Instructional Unit → Worksheets/Homework.
 
+import Dialog from "@/components/Dialog";
 import { useMemo, useState } from "react";
 import {
   Sparkles, X, Loader2, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle,
@@ -78,7 +79,7 @@ export default function PlanningAssistantModal({
 
   const committedGoal = useMemo(
     () => (session?.goalId ? profile.goals.find((g) => g.id === session.goalId) : undefined),
-    [session?.goalId, profile.goals]
+    [session, profile.goals]
   );
 
   async function guard(label: string, fn: () => Promise<void>) {
@@ -169,6 +170,7 @@ export default function PlanningAssistantModal({
       const mat = await generateAndSaveMaterial(profile, target, allLogs, "worksheet", {
         worksheetSpec: spec,
         plaafp: session.plaafp,
+        accommodations: session.accommodationsSelected,
       });
       setLastWorksheet(mat);
       onChanged();
@@ -185,7 +187,7 @@ export default function PlanningAssistantModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <Dialog onClose={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[94vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-slate-900 to-indigo-950 text-white">
@@ -215,7 +217,7 @@ export default function PlanningAssistantModal({
                 <button
                   key={s.label}
                   onClick={() => reached && setStep(i)}
-                  disabled={!reached}
+                  disabled={!reached || !!busy}
                   className={clsx(
                     "flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left text-xs font-bold transition-all",
                     step === i
@@ -313,7 +315,7 @@ export default function PlanningAssistantModal({
                     sub="Individualized to the current instructional level — not a generic grade-level standard. Edit anything, then add it to the student's goals." />
                   {session?.goalId && (
                     <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4" /> Added to {profile.studentInitials}'s IEP goals.
+                      <CheckCircle2 className="w-4 h-4" /> Added to {profile.studentInitials}&apos;s IEP goals.
                     </div>
                   )}
                   <Field label="Annual goal statement">
@@ -398,7 +400,7 @@ export default function PlanningAssistantModal({
                       );
                     })}
                     {profile.accommodations.length === 0 && (
-                      <p className="text-xs text-gray-400">No accommodations on this student's profile yet — add some below.</p>
+                      <p className="text-xs text-gray-400">No accommodations on this student&apos;s profile yet — add some below.</p>
                     )}
                   </div>
                   <Field label="Add more (one per line)">
@@ -478,7 +480,7 @@ export default function PlanningAssistantModal({
                 onAnalyze={analyzePresentLevel}
                 onRecommend={recommendGoal}
                 onCommit={commitGoal}
-                onNextFromGoal={() => setStep(3)}
+                onNextFromGoal={commitGoal}
                 onBuildUnit={buildUnit}
                 onNextFromUnit={() => setStep(5)}
                 onDone={onClose}
@@ -487,7 +489,7 @@ export default function PlanningAssistantModal({
           </div>
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }
 
@@ -529,7 +531,7 @@ function PrimaryButton(props: {
     return <button onClick={props.onRecommend} disabled={!!busy} className={cls}>{busy === "goal" ? spin : <Target className="w-4 h-4" />}{busy === "goal" ? "Writing goal…" : "Save & recommend IEP goal"}{!busy && arrow}</button>;
   if (step === 2)
     return hasGoalCommitted
-      ? <button onClick={props.onNextFromGoal} className={cls}>Continue to accommodations {arrow}</button>
+      ? <button onClick={props.onNextFromGoal} disabled={!!busy} className={cls}>Save changes & continue {arrow}</button>
       : <button onClick={props.onCommit} disabled={!!busy} className={cls}>{busy === "commit" ? spin : <CheckCircle2 className="w-4 h-4" />}{busy === "commit" ? "Adding…" : "Add to IEP goals"}{!busy && arrow}</button>;
   if (step === 3)
     return <button onClick={props.onBuildUnit} disabled={!!busy} className={cls}>{busy === "unit" ? spin : <Layers className="w-4 h-4" />}{busy === "unit" ? "Building unit…" : "Save & build instructional unit"}{!busy && arrow}</button>;

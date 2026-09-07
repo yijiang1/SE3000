@@ -17,7 +17,8 @@ export async function logUsage(feature: UsageFeature, modelUsed: string, costEst
     costEstimate: costEstimate || 0,
     createdAt: new Date().toISOString(),
   };
-  await db.usageLogs.put(entry);
+  try { await db.usageLogs.put(entry); }
+  catch (error) { console.warn("Usage recording failed; generated content is preserved.", error); }
 }
 
 export async function getUsageLogs(limit = 200): Promise<UsageLogEntry[]> {

@@ -1,85 +1,19 @@
 "use client";
-// components/ServiceTracker.tsx — Mandated vs delivered service minutes table
-
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import { clsx } from "clsx";
-import type { StudentIEPProfile } from "@/types/iep";
-
-interface Props {
-  profile: StudentIEPProfile;
-}
-
-const SERVICE_LABELS: Record<string, string> = {
-  speech_language: "Speech-Language Therapy",
-  occupational_therapy: "Occupational Therapy",
-  physical_therapy: "Physical Therapy",
-  counseling: "Counseling",
-  specialized_instruction: "Specialized Instruction",
-  other: "Other",
-};
-
-export default function ServiceTracker({ profile }: Props) {
-  const { services } = profile;
-
-  if (services.length === 0) {
-    return (
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Service Delivery</h3>
-        <p className="text-sm text-gray-400">No services recorded.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
-      <h3 className="text-sm font-semibold text-gray-700 mb-3">Service Delivery (This Week)</h3>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100">
-              <th className="text-left pb-2">Service</th>
-              <th className="text-right pb-2">Mandated</th>
-              <th className="text-right pb-2">Delivered</th>
-              <th className="text-right pb-2">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {services.map((svc) => {
-              const deficit = svc.mandatedMinutesPerWeek - svc.deliveredMinutesThisWeek;
-              const pct = Math.round((svc.deliveredMinutesThisWeek / svc.mandatedMinutesPerWeek) * 100);
-              const ok = deficit <= 0;
-              return (
-                <tr key={svc.id} className="border-b border-gray-50 last:border-0">
-                  <td className="py-2.5 text-gray-700 font-medium">{SERVICE_LABELS[svc.type] ?? svc.type}</td>
-                  <td className="py-2.5 text-right text-gray-600">{svc.mandatedMinutesPerWeek} min</td>
-                  <td className={clsx("py-2.5 text-right font-medium", ok ? "text-green-700" : "text-red-600")}>
-                    {svc.deliveredMinutesThisWeek} min
-                  </td>
-                  <td className="py-2.5 text-right">
-                    {ok ? (
-                      <span className="inline-flex items-center justify-end gap-1 text-green-600">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span className="text-xs">{pct}%</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center justify-end gap-1 text-red-600">
-                        <AlertTriangle className="w-4 h-4" />
-                        <span className="text-xs">-{deficit} min</span>
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      {services.some((s) => s.deliveredMinutesThisWeek < s.mandatedMinutesPerWeek) && (
-        <p className="mt-3 text-xs text-red-600 flex items-start gap-1.5">
-          <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-          One or more services have a delivery deficit this week. Review scheduling to ensure compliance.
-        </p>
-      )}
-    </div>
-  );
+import {useState} from "react";
+import db from "@/lib/db";
+import {localDate,validDate} from "@/lib/dates";
+import {weekBounds,weeklyMinutes} from "@/lib/services";
+import type {StudentIEPProfile,ServiceType} from "@/types/iep";
+const labels:Record<ServiceType,string>={speech_language:"Speech-language",occupational_therapy:"Occupational therapy",physical_therapy:"Physical therapy",counseling:"Counseling",specialized_instruction:"Specialized instruction",other:"Other"};
+export default function ServiceTracker({profile,onChanged}:{profile:StudentIEPProfile;onChanged?:()=>void}){
+  const [type,setType]=useState<ServiceType>("specialized_instruction");const [mandate,setMandate]=useState("30");const [date,setDate]=useState(localDate());const [minutes,setMinutes]=useState("30");const [error,setError]=useState("");const [busy,setBusy]=useState(false);
+  const [weekStart,weekEnd]=weekBounds();
+  async function update(action:(current:StudentIEPProfile)=>void){setBusy(true);setError("");try{await db.transaction("rw",db.profiles,async()=>{const current=await db.profiles.get(profile.id);if(!current)throw new Error("Student no longer exists.");action(current);current.updatedAt=new Date().toISOString();await db.profiles.put(current);});onChanged?.();}catch(e){setError(e instanceof Error?e.message:"Could not save service.");}finally{setBusy(false);}}
+  return <section className="bg-white border rounded-xl p-5 space-y-3"><h3 className="font-semibold">Service delivery · {weekStart} – {weekEnd}</h3>{error&&<p role="alert" className="text-red-700">{error}</p>}
+  {profile.services.map((service)=><div key={service.id} className="border-b py-3 space-y-2"><p>{labels[service.type]}: {weeklyMinutes(service.entries)} / {service.mandatedMinutesPerWeek} minutes this week</p>{!service.entries&&service.deliveredMinutesThisWeek>0&&<p className="text-xs text-slate-500">Undated legacy snapshot: {service.deliveredMinutesThisWeek} minutes. Not counted this week.</p>}
+  <button disabled={busy} className="text-indigo-700" onClick={()=>update((p)=>{const value=Number(minutes);if(!minutes.trim()||!Number.isFinite(value)||value<=0||!validDate(date))throw new Error("Enter a valid date and positive minutes.");const current=p.services.find((s)=>s.id===service.id);if(!current)throw new Error("Service no longer exists.");current.entries=[...(current.entries??[]),{id:crypto.randomUUID(),date,minutes:value}];})}>Log delivery</button>
+  <details><summary className="text-xs">Delivery history / corrections</summary>{(service.entries??[]).map((entry)=><p key={entry.id} className="text-xs">{entry.date}: {entry.minutes} minutes <button disabled={busy} onClick={()=>update((p)=>{const current=p.services.find((s)=>s.id===service.id);if(current)current.entries=current.entries?.filter((e)=>e.id!==entry.id);})}>Remove incorrect entry</button></p>)}</details></div>)}
+  <div className="flex flex-wrap gap-3"><label>Delivery date<input type="date" value={date} onChange={(e)=>setDate(e.target.value)} className="block border rounded p-1"/></label><label>Minutes<input type="number" min="1" value={minutes} onChange={(e)=>setMinutes(e.target.value)} className="block border rounded p-1 w-24"/></label></div>
+  <details><summary className="text-sm font-semibold">Add or update mandated service</summary><div className="flex flex-wrap gap-3 py-2"><label>Service<select value={type} onChange={(e)=>setType(e.target.value as ServiceType)} className="block border p-1">{Object.entries(labels).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Minutes per week<input type="number" value={mandate} onChange={(e)=>setMandate(e.target.value)} className="block border p-1 w-24"/></label><button disabled={busy} onClick={()=>update((p)=>{const value=Number(mandate);if(!mandate.trim()||!Number.isFinite(value)||value<=0)throw new Error("Mandated minutes must be positive.");const existing=p.services.find((s)=>s.type===type);if(existing)existing.mandatedMinutesPerWeek=value;else p.services.push({id:crypto.randomUUID(),type,mandatedMinutesPerWeek:value,deliveredMinutesThisWeek:0,entries:[]});})}>Save service</button></div></details>
+  </section>;
 }

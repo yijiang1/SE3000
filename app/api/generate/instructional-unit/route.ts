@@ -1,3 +1,5 @@
+import { validOutput } from "@/lib/schemas";
+import { generationRoute } from "@/lib/apiGuard";
 // app/api/generate/instructional-unit/route.ts — Stage 4: scaffolded instructional unit
 //
 // Turns the identified area of need + IEP goal into an individualized lesson
@@ -114,9 +116,8 @@ function synthesizeUnit(
   };
 }
 
-export async function POST(req: NextRequest) {
+export const POST = generationRoute(async (req, body) => {
   try {
-    const body = await req.json();
     const ctx: GenerationContext = body.context;
     const plaafp: PLAAFPAnalysis | undefined = body.plaafp;
     const accommodations: string[] = Array.isArray(body.accommodations) ? body.accommodations : [];
@@ -127,7 +128,7 @@ export async function POST(req: NextRequest) {
     }
 
     const theme = ctx.student.interests[0] || "Exploration";
-    const accsForPrompt = (accommodations.length ? accommodations : ctx.accommodations)
+    const accsForPrompt = (body.accommodations !== undefined ? accommodations : ctx.accommodations)
       .map((a) => `- ${a}`)
       .join("\n") || "- Standard instructional supports";
 
@@ -170,7 +171,7 @@ Respond with ONLY valid JSON in this exact shape:
   "masteryAssessment": "how mastery of the whole unit is assessed"
 }`.trim();
 
-    const ai = await generateJSON(promptText, { temperature: 0.4, preferredOrder: providerPreferences?.text });
+    const ai = await generateJSON(promptText, { temperature: 0.4, validate: (value) => validOutput("instructional_unit", value), preferredOrder: providerPreferences?.text });
     const parsed: InstructionalUnitContent | undefined = ai?.json;
     if (parsed?.steps?.length) {
       return NextResponse.json({
@@ -193,4 +194,4 @@ Respond with ONLY valid JSON in this exact shape:
       { status: 500 }
     );
   }
-}
+});

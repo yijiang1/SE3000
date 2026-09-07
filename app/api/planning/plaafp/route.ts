@@ -1,3 +1,5 @@
+import { validOutput } from "@/lib/schemas";
+import { generationRoute } from "@/lib/apiGuard";
 // app/api/planning/plaafp/route.ts — Stage 1: Present Level → PLAAFP + skill-gap analysis
 //
 // Analyzes teacher-reported present-level data and produces a clear PLAAFP
@@ -40,7 +42,7 @@ function synthesizePlaafp(student: StudentContextLite, input: PresentLevelInput)
   const name = student.initials;
   const subject = input.subjectArea || "the target academic area";
   const grade = input.currentGradeLevel || student.grade;
-  const instr = input.currentInstructionalLevel || "a below-grade instructional level";
+  const instr = input.currentInstructionalLevel || "an instructional level not yet documented";
 
   const canDoNow = [
     ...toBullets(input.areasOfStrength, 3),
@@ -56,14 +58,10 @@ function synthesizePlaafp(student: StudentContextLite, input: PresentLevelInput)
     toBullets(input.areasOfWeakness, 1)[0] ||
     `grade-appropriate ${subject.toLowerCase()} skills`;
 
-  const distanceFromGradeLevel = `${name} is currently working at ${instr}, approximately below the ${grade}-grade expectation in ${subject}. ${
-    input.assessmentResults?.trim()
-      ? `Recent assessment data (${input.assessmentResults.trim().slice(0, 160)}) confirms this gap.`
-      : "Assessment and classroom data indicate a meaningful gap from grade-level benchmarks."
-  }`;
+  const distanceFromGradeLevel = "A grade-level gap has not been established by this local template. Compare the documented instructional level and assessment results with the relevant grade-level benchmarks before drawing conclusions.";
 
   const plaafpStatement =
-    `${name} is a ${grade}-grade student receiving special education services. In ${subject}, ${name} currently performs at ${instr}. ` +
+    `Local template — review before use. ${name} is a ${grade}-grade student receiving special education services. In ${subject}, ${name} currently performs at ${instr}. ` +
     (canDoNow.length
       ? `${name} is able to ${canDoNow.slice(0, 3).join("; ")}. `
       : "") +
@@ -86,8 +84,8 @@ function synthesizePlaafp(student: StudentContextLite, input: PresentLevelInput)
     subjectArea: subject,
     instructionalLevel: instr,
     skillGaps: {
-      canDoNow: canDoNow.length ? canDoNow : [`Emerging foundational skills in ${subject.toLowerCase()}`],
-      needsToImprove: needsToImprove.length ? needsToImprove : [`Consistent, independent performance of ${targetSkill}`],
+      canDoNow: canDoNow.length ? canDoNow : ["Current skills have not been documented."],
+      needsToImprove: needsToImprove.length ? needsToImprove : ["Areas of need have not been documented."],
       distanceFromGradeLevel: distanceFromGradeLevel.replace(/\s+/g, " ").trim(),
       targetSkill,
       prioritizedSkillGaps: (needsToImprove.length ? needsToImprove : [targetSkill]).slice(0, 5),
@@ -95,9 +93,8 @@ function synthesizePlaafp(student: StudentContextLite, input: PresentLevelInput)
   };
 }
 
-export async function POST(req: NextRequest) {
+export const POST = generationRoute(async (req, body) => {
   try {
-    const body = await req.json();
     const student: StudentContextLite = body.student;
     const input: PresentLevelInput = body.input;
     const providerPreferences: ProviderPreferences | undefined = body.providerPreferences;
@@ -126,7 +123,8 @@ GUIDELINES:
 2. Anchor everything to the student's CURRENT INSTRUCTIONAL LEVEL, not just the grade level.
 3. "targetSkill" must be a single, concrete, measurable academic skill (e.g.
    "solving one-variable linear equations", "reading multisyllabic words with vowel teams").
-4. Be honest about the size of the gap from grade-level expectations.
+4. Never invent assessment results or missing student facts. Mark unknown information explicitly.
+5. Be honest about the size of the gap from grade-level expectations.
 
 Respond with ONLY valid JSON in this exact shape:
 {
@@ -142,7 +140,7 @@ Respond with ONLY valid JSON in this exact shape:
   }
 }`.trim();
 
-    const ai = await generateJSON(promptText, { temperature: 0.3, preferredOrder: providerPreferences?.text });
+    const ai = await generateJSON(promptText, { temperature: 0.3, validate: (value) => validOutput("plaafp", value), preferredOrder: providerPreferences?.text });
     const parsed: PLAAFPAnalysis | undefined = ai?.json;
     if (parsed?.plaafpStatement && parsed?.skillGaps?.targetSkill) {
       return NextResponse.json({
@@ -153,6 +151,9 @@ Respond with ONLY valid JSON in this exact shape:
       });
     }
 
+    if (input.rawNotes?.trim()) {
+      return NextResponse.json({error:"The local template cannot interpret uploaded records. Copy the relevant evidence into the structured assessment/skills fields and clear the raw notes, or configure an AI provider and retry. No assessment has been inferred from the upload."}, {status:422});
+    }
     return NextResponse.json({
       content: synthesizePlaafp(student, input),
       modelUsed: "se-3000-plaafp-engine",
@@ -165,4 +166,4 @@ Respond with ONLY valid JSON in this exact shape:
       { status: 500 }
     );
   }
-}
+});

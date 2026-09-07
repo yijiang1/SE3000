@@ -35,6 +35,7 @@ export default function PresentLevelForm({ value, onChange }: Props) {
     setParseMsg(null);
     try {
       const result = await extractDocumentText(file);
+      if (result.text.length + (value.rawNotes?.length ?? 0) > 99000) throw new Error("This report exceeds the 100,000-character analysis limit. Select a shorter relevant excerpt.");
       const prefix = value.rawNotes?.trim() ? value.rawNotes.trimEnd() + "\n\n" : "";
       set({ rawNotes: `${prefix}--- ${file.name} ---\n${result.text}` });
       setParseMsg(
@@ -125,9 +126,11 @@ export default function PresentLevelForm({ value, onChange }: Props) {
           value={value.rawNotes || ""}
           onChange={(e) => set({ rawNotes: e.target.value })}
           rows={4}
+          maxLength={100000}
           placeholder="Paste an existing progress report, prior IEP present levels, or evaluation summary here. Uploaded files are read in your browser and appended below — nothing is sent anywhere until you run the analysis."
           className="w-full border border-indigo-200 rounded-xl px-3 py-2 text-xs text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-y"
         />
+        <p className="mt-1 text-xs text-indigo-800">All notes are included in AI analysis (up to 100,000 characters; larger requests are rejected). The local template cannot interpret uploaded reports.</p>
         {parseMsg && (
           <p className="mt-1.5 text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
             <FileText className="w-3 h-3" /> {parseMsg}

@@ -245,6 +245,7 @@ async function runOneFirstDayGeneration(
   };
 
   await db.firstDayMaterials.put(tempRecord);
+  const heartbeat = setInterval(() => { void db.firstDayMaterials.update(materialId, { updatedAt: new Date().toISOString() }).catch(() => {}); }, 15_000);
 
   try {
     const res = await fetch("/api/generate/first-day", {
@@ -277,7 +278,7 @@ async function runOneFirstDayGeneration(
       updatedAt: new Date().toISOString(),
     };
 
-    await db.firstDayMaterials.put(readyRecord);
+    await db.firstDayMaterials.update(materialId, (row) => { Object.assign(row, readyRecord); });
     await logUsage("first_day", readyRecord.modelUsed, readyRecord.generationCostEstimate || 0, data.provider);
     return readyRecord;
   } catch (err: any) {
@@ -287,9 +288,9 @@ async function runOneFirstDayGeneration(
       error: err.message || "Failed to generate first-day material",
       updatedAt: new Date().toISOString(),
     };
-    await db.firstDayMaterials.put(errorRecord);
-    throw err;
-  }
+    await db.firstDayMaterials.update(materialId, (row) => { Object.assign(row, errorRecord); });
+    throw Object.assign(err instanceof Error ? err : new Error(String(err)), { material: errorRecord });
+  } finally { clearInterval(heartbeat); }
 }
 
 export async function generateAndSaveFirstDayMaterial(
@@ -328,7 +329,7 @@ export async function generateFirstDayMaterialVariants(
       // request can silently fall back to local without throwing, so label
       // the card with what was actually requested in that case.
       if (result.status === "ready" && !result.provider) {
-        const tagged: FirstDayMaterial = { ...result, provider: providerId };
+        const tagged: FirstDayMaterial = { ...result, requestedProvider: providerId };
         await db.firstDayMaterials.put(tagged);
         return tagged;
       }
@@ -337,8 +338,7 @@ export async function generateFirstDayMaterialVariants(
   );
 
   return settled
-    .filter((r): r is PromiseFulfilledResult<FirstDayMaterial> => r.status === "fulfilled")
-    .map((r) => r.value);
+    .flatMap((r) => r.status === "fulfilled" ? [r.value] : r.reason?.material ? [r.reason.material as FirstDayMaterial] : []);
 }
 
 export async function deleteFirstDayMaterial(materialId: string): Promise<void> {
@@ -350,7 +350,7 @@ export async function deleteFirstDayMaterial(materialId: string): Promise<void> 
  * generation request was interrupted (tab closed, navigation, hard reload).
  */
 export async function cleanupStaleFirstDayMaterials(): Promise<number> {
-  const stale = await db.firstDayMaterials.where("status").equals("generating").toArray();
+  const stale = await db.firstDayMaterials.where("status").equals("generating").filter((m) => Date.now() - Date.parse(m.updatedAt) > 120_000).toArray();
   if (stale.length === 0) return 0;
   await db.firstDayMaterials.bulkDelete(stale.map((m) => m.id));
   return stale.length;

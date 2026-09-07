@@ -1,3 +1,5 @@
+import { validOutput } from "@/lib/schemas";
+import { generationRoute } from "@/lib/apiGuard";
 // app/api/planning/iep-goal/route.ts — Stage 2: PLAAFP → measurable, individualized IEP goal
 //
 // Recommends ONE measurable annual goal built on the student's present level and
@@ -59,9 +61,10 @@ function synthesizeGoal(
   const skill = plaafp.skillGaps.targetSkill || `grade-appropriate ${plaafp.subjectArea.toLowerCase()} skills`;
   const category = inferCategory(`${skill} ${plaafp.subjectArea} ${input.areasOfWeakness}`);
 
-  const baselineValue = guessBaseline(input.assessmentResults, input.previousGoalsAndProgress, input.classroomPerformance) ?? 40;
+  const baselineValue = guessBaseline(input.assessmentResults, input.previousGoalsAndProgress, input.classroomPerformance) ;
+  if (baselineValue === null) throw new Error("Enter an observed baseline percentage or a score out of a known total in Assessment Results before generating a goal.");
   const measurementUnit: MeasurementUnit = "%";
-  const targetValue = Math.min(90, Math.max(75, baselineValue + 30));
+  const targetValue = Math.min(100, Math.max(75, baselineValue + 30));
   const trialsDenominator = 5;
 
   const isReading = /read|decod|fluenc|phonic|comprehen/i.test(`${skill} ${plaafp.subjectArea}`);
@@ -97,7 +100,7 @@ function synthesizeGoal(
   return {
     targetSkill: skill,
     baselineStatement: `${name} currently performs ${skill} at approximately ${baselineValue}% accuracy at ${plaafp.instructionalLevel} (per ${
-      input.assessmentResults?.trim() ? input.assessmentResults.trim().slice(0, 120) : "classroom and progress-monitoring data"
+      input.assessmentResults?.trim() || input.previousGoalsAndProgress?.trim() || input.classroomPerformance?.trim()
     }).`,
     baselineValue,
     annualGoalText: annualGoalText.replace(/\s+/g, " ").trim(),
@@ -113,9 +116,8 @@ function synthesizeGoal(
   };
 }
 
-export async function POST(req: NextRequest) {
+export const POST = generationRoute(async (req, body) => {
   try {
-    const body = await req.json();
     const student: StudentContextLite = body.student;
     const plaafp: PLAAFPAnalysis = body.plaafp;
     const input: PresentLevelInput = body.input;
@@ -123,6 +125,10 @@ export async function POST(req: NextRequest) {
 
     if (!student || !plaafp || !plaafp.skillGaps) {
       return NextResponse.json({ error: "Missing student context or PLAAFP analysis" }, { status: 400 });
+    }
+
+    if (guessBaseline(input?.assessmentResults, input?.previousGoalsAndProgress, input?.classroomPerformance) === null) {
+      return NextResponse.json({error:"Enter a measured baseline percentage or score out of a known total in Assessment Results. A baseline will not be invented."}, {status:422});
     }
 
     const promptText = `
@@ -137,7 +143,7 @@ ${formatPlaafpForPrompt(plaafp)}
 ${input ? formatPresentLevelForPrompt(input) : ""}
 
 REQUIREMENTS:
-1. Individualize the goal to the student's CURRENT INSTRUCTIONAL LEVEL — do NOT simply
+1. Do not invent student data. Use the observed baseline from the supplied structured assessment fields. Individualize the goal to the student's CURRENT INSTRUCTIONAL LEVEL — do NOT simply
    restate a grade-level standard.
 2. The goal must be measurable: include target skill, baseline (number), annual target
    (number), measurement unit, measurement criteria, mastery criteria, and a
@@ -167,7 +173,7 @@ Respond with ONLY valid JSON in this exact shape:
   "rationale": "why this is individualized to the instructional level"
 }`.trim();
 
-    const ai = await generateJSON(promptText, { temperature: 0.3, preferredOrder: providerPreferences?.text });
+    const ai = await generateJSON(promptText, { temperature: 0.3, validate: (value) => validOutput("iep_goal", value), preferredOrder: providerPreferences?.text });
     const parsed: RecommendedIEPGoal | undefined = ai?.json;
     if (parsed?.annualGoalText && typeof parsed?.targetValue === "number") {
       return NextResponse.json({
@@ -190,4 +196,4 @@ Respond with ONLY valid JSON in this exact shape:
       { status: 500 }
     );
   }
-}
+});

@@ -28,12 +28,12 @@ export function buildGenerationContext(
       initials: profile.studentInitials,
       grade: profile.grade,
       eligibility: profile.primaryEligibility,
-      readingLevel: profile.learningProfile?.readingLevel || "Grade level",
-      comprehensionLevel: profile.learningProfile?.comprehensionLevel || "Standard grade-level comprehension",
-      communicationNeeds: profile.learningProfile?.communicationNeeds || ["verbal"],
+      readingLevel: profile.learningProfile?.readingLevel || "Not specified",
+      comprehensionLevel: profile.learningProfile?.comprehensionLevel || "Not specified",
+      communicationNeeds: profile.learningProfile?.communicationNeeds || [],
       sensoryConsiderations: profile.learningProfile?.sensoryConsiderations || [],
-      interests: profile.learningProfile?.interests || ["General Animals", "Space", "Science"],
-      preferredModality: profile.learningProfile?.preferredModality || ["visual", "hands_on"],
+      interests: profile.learningProfile?.interests || [],
+      preferredModality: profile.learningProfile?.preferredModality || [],
       additionalNotes: profile.learningProfile?.additionalNotes,
     },
     goal: {
@@ -62,12 +62,12 @@ export function buildStudentContextLite(profile: StudentIEPProfile): StudentCont
     initials: profile.studentInitials,
     grade: profile.grade,
     eligibility: profile.primaryEligibility,
-    readingLevel: lp?.readingLevel || "Grade level",
-    comprehensionLevel: lp?.comprehensionLevel || "Standard grade-level comprehension",
-    communicationNeeds: lp?.communicationNeeds || ["verbal"],
+    readingLevel: lp?.readingLevel || "Not specified",
+    comprehensionLevel: lp?.comprehensionLevel || "Not specified",
+    communicationNeeds: lp?.communicationNeeds || [],
     sensoryConsiderations: lp?.sensoryConsiderations || [],
-    interests: lp?.interests || ["General Animals", "Space", "Science"],
-    preferredModality: lp?.preferredModality || ["visual", "hands_on"],
+    interests: lp?.interests || [],
+    preferredModality: lp?.preferredModality || [],
     additionalNotes: lp?.additionalNotes,
   };
 }
@@ -95,7 +95,7 @@ export function buildContextFromRecommendedGoal(
       trendStatus: "no_data",
     },
     accommodations:
-      accommodations && accommodations.length > 0
+      accommodations !== undefined
         ? accommodations
         : profile.accommodations.filter((a) => a.active).map((a) => a.text),
   };
@@ -126,7 +126,7 @@ export function formatPresentLevelForPrompt(input: PresentLevelInput): string {
 - Classroom Performance: ${input.classroomPerformance || "Not provided"}
 - Previous IEP Goals & Progress: ${input.previousGoalsAndProgress || "Not provided"}
 - Teacher Observations: ${input.teacherObservations || "Not provided"}
-${input.rawNotes ? `- Additional Notes / Uploaded Records:\n${input.rawNotes.slice(0, 6000)}` : ""}`.trim();
+${input.rawNotes ? `- Additional Notes / Uploaded Records:\n${input.rawNotes}` : ""}`.trim();
 }
 
 export function formatPlaafpForPrompt(plaafp: PLAAFPAnalysis): string {

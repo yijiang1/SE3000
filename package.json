@@ -3,13 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname 127.0.0.1",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
+    "start": "next start --hostname 127.0.0.1",
+    "lint": "eslint .",
     "sync-pdf-worker": "node -e \"const fs=require('fs');fs.mkdirSync('public',{recursive:true});fs.copyFileSync(require.resolve('pdfjs-dist/build/pdf.worker.min.mjs'),'public/pdf.worker.min.mjs')\"",
     "postinstall": "npm run sync-pdf-worker",
-    "prebuild": "npm run sync-pdf-worker"
+    "prebuild": "npm run sync-pdf-worker",
+    "typecheck": "node node_modules/@typescript/native/bin/tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.19.0",
@@ -26,12 +28,24 @@
     "next": "^16.3.3",
     "openai": "^7.8.0",
     "pdfjs-dist": "^6.3.289",
+    "pptxgenjs": "^4.0.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
-    "typescript": "^7.0.2",
-    "uuid": "^14.0.2"
+    "uuid": "^14.0.2",
+    "zod": "^4.5.4"
   },
-  "description": "Local-first AI-powered special education teaching materials generator and IEP goal progress tracker"
+  "description": "Local-first AI-powered special education teaching materials generator and IEP goal progress tracker",
+  "devDependencies": {
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.3",
+    "fake-indexeddb": "^6.2.5",
+    "tsx": "^4.23.13",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=20.9"
+  }
 }

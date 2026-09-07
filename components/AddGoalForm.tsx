@@ -1,9 +1,11 @@
 "use client";
 // components/AddGoalForm.tsx — Modal form to add an IEP goal to a student
 
+import Dialog from "@/components/Dialog";
 import { useState } from "react";
 import { X, Target } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
+import { validateGoal } from "@/lib/goalValidation";
 import db from "@/lib/db";
 import type { StudentIEPProfile, IEPGoal, GoalCategory, MeasurementUnit } from "@/types/iep";
 
@@ -61,13 +63,19 @@ export default function AddGoalForm({ profile, onClose, onGoalAdded }: Props) {
       reviewDate,
       createdAt: now,
     };
+    const invalid = validateGoal(newGoal);
+    if (invalid) { setError(invalid); setSaving(false); return; }
     try {
+      await db.transaction("rw", db.profiles, async () => {
+      const current = await db.profiles.get(profile.id);
+      if (!current) throw new Error("Student no longer exists.");
       const updated: StudentIEPProfile = {
-        ...profile,
-        goals: [...profile.goals, newGoal],
+        ...current,
+        goals: [...current.goals, newGoal],
         updatedAt: now,
       };
       await db.profiles.put(updated);
+      });
       onGoalAdded();
     } catch {
       setError("Failed to save goal. Please try again.");
@@ -77,7 +85,7 @@ export default function AddGoalForm({ profile, onClose, onGoalAdded }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <Dialog onClose={onClose} className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
@@ -200,6 +208,6 @@ export default function AddGoalForm({ profile, onClose, onGoalAdded }: Props) {
           </div>
         </form>
       </div>
-    </div>
+    </Dialog>
   );
 }

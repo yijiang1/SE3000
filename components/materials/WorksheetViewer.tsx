@@ -1,6 +1,7 @@
 "use client";
 // components/materials/WorksheetViewer.tsx — printable differentiated worksheet / homework viewer
 
+import { printMaterial } from "@/lib/print";
 import { useState } from "react";
 import { Printer, Key, KeyRound, Eye, EyeOff, ClipboardList, X } from "lucide-react";
 import { clsx } from "clsx";
@@ -30,7 +31,7 @@ export default function WorksheetViewer({ content, onClose }: Props) {
   const hasKey = (content.answerKey?.length ?? 0) > 0;
 
   return (
-    <div className="flex flex-col bg-white text-slate-900 rounded-2xl overflow-hidden shadow-2xl w-full">
+    <div data-print-material className="flex flex-col bg-white text-slate-900 rounded-2xl overflow-hidden shadow-2xl w-full">
       {/* ─── Toolbar (hidden on print) ─────────────────────────── */}
       <div className="flex items-center justify-between gap-3 px-5 py-3.5 bg-slate-900 text-white print:hidden">
         <div className="flex items-center gap-3 min-w-0">
@@ -75,7 +76,7 @@ export default function WorksheetViewer({ content, onClose }: Props) {
           )}
 
           <button
-            onClick={() => window.print()}
+            onClick={(e) => printMaterial(e.currentTarget)}
             className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors"
             title="Print worksheet"
           >

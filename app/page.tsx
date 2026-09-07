@@ -1,7 +1,7 @@
 "use client";
 // app/page.tsx — SE 3000 Special Education Materials & IEP Tracking Platform
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   Sparkles,
@@ -77,6 +77,9 @@ import MiniGamePlayer from "@/components/materials/MiniGamePlayer";
 import AudioMusicPlayer from "@/components/materials/AudioMusicPlayer";
 import NarrationPlayer from "@/components/materials/NarrationPlayer";
 import VideoPlayer from "@/components/materials/VideoPlayer";
+import { validOutput } from "@/lib/schemas";
+import Dialog from "@/components/Dialog";
+import MaterialErrorBoundary from "@/components/MaterialErrorBoundary";
 import WorksheetViewer from "@/components/materials/WorksheetViewer";
 import FirstDayWebpageViewer from "@/components/materials/FirstDayWebpageViewer";
 
@@ -122,6 +125,7 @@ export default function DashboardPage() {
   // Modals & Drawers state
   const [showPlaafp, setShowPlaafp] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [editStudent, setEditStudent] = useState(false);
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [showPlanning, setShowPlanning] = useState(false);
@@ -133,6 +137,8 @@ export default function DashboardPage() {
   const [viewingMaterial, setViewingMaterial] = useState<GeneratedMaterial | null>(null);
   const [compareResults, setCompareResults] = useState<GeneratedMaterial[] | null>(null);
 
+  const selectionRef = useRef(selectedId);
+  useEffect(() => { selectionRef.current = selectedId; }, [selectedId]);
   const selectedProfile = profiles.find((p) => p.id === selectedId) ?? null;
 
   // Load profiles from IndexedDB
@@ -199,6 +205,7 @@ export default function DashboardPage() {
       getPlanningSessionsForProfile(selectedId),
     ]);
 
+    if (selectionRef.current !== selectedId) return;
     setLogs(studentLogs);
     setMaterials(studentMaterials);
     setPlanningSessions(sessions);
@@ -220,7 +227,8 @@ export default function DashboardPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (selectedId) loadStudentData();
+    setLogs([]); setMaterials([]); setPlanningSessions([]);
+    if (selectedId) void loadStudentData().catch(() => setInitError("Could not load student records. Reload to retry."));
   }, [selectedId, loadStudentData]);
 
   function handleLogAdded() {
@@ -427,6 +435,7 @@ export default function DashboardPage() {
 
       {/* ─── Main Content Container ─────────────────────────────── */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <p className="my-3 rounded-lg bg-indigo-50 p-3 text-xs text-indigo-900">Records are stored in this browser. Generating or analyzing sends the supplied context to configured AI providers, trying the next provider if one fails. Without providers, server-based templates are used. Back up your records regularly.</p>
         {/* First-Day Materials Hub (not tied to any student) */}
         <FirstDayMaterialsGallery
           accent="amber"
@@ -591,6 +600,7 @@ export default function DashboardPage() {
         {selectedProfile && (
           <>
             {/* 1. Student Header & Learning Profile Banner */}
+            <button onClick={() => setEditStudent(true)} className="text-sm font-semibold text-indigo-700">Edit student profile</button>
             <StudentHeader
               profile={selectedProfile}
               showPlaafp={showPlaafp}
@@ -709,8 +719,8 @@ export default function DashboardPage() {
 
             {/* 5. Mandated Services & Accommodations Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <ServiceTracker profile={selectedProfile} />
-              <AccommodationList profile={selectedProfile} />
+              <ServiceTracker profile={selectedProfile} onChanged={handlePlanningChanged} />
+              <AccommodationList profile={selectedProfile} onChanged={handlePlanningChanged} />
             </div>
           </>
         )}
@@ -743,9 +753,9 @@ export default function DashboardPage() {
       {/* Interactive Material Viewer Dialog */}
       {viewingMaterial && ((mat: GeneratedMaterial) => {
         const parsed = safeParseContent(mat.contentJson);
-        const isViewable = mat.status === "ready" && parsed !== null;
+        const isViewable = mat.status === "ready" && parsed !== null && validOutput(mat.type, parsed);
         return (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <Dialog onClose={() => setViewingMaterial(null)} className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
             <div className="w-full max-w-4xl max-h-[95vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
               {!isViewable ? (
                 <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 text-center space-y-3 text-white">
@@ -768,7 +778,7 @@ export default function DashboardPage() {
                   </button>
                 </div>
               ) : (
-                <>
+                <MaterialErrorBoundary key={mat.id} onClose={() => setViewingMaterial(null)}>
                   {mat.type === "slide_deck" && (
                     <SlideDeckViewer content={parsed} onClose={() => setViewingMaterial(null)} />
                   )}
@@ -776,9 +786,9 @@ export default function DashboardPage() {
                     <BoardGameViewer content={parsed} onClose={() => setViewingMaterial(null)} />
                   )}
                   {mat.type === "mini_game" && (
-                    <MiniGamePlayer
+                    <MiniGamePlayer key={mat.id}
                       content={parsed}
-                      profileId={selectedProfile?.id}
+                      profileId={mat.profileId}
                       goalId={mat.goalId}
                       onObservationLogged={handleLogAdded}
                       onClose={() => setViewingMaterial(null)}
@@ -796,10 +806,10 @@ export default function DashboardPage() {
                   {mat.type === "worksheet" && (
                     <WorksheetViewer content={parsed} onClose={() => setViewingMaterial(null)} />
                   )}
-                </>
+                </MaterialErrorBoundary>
               )}
             </div>
-          </div>
+          </Dialog>
         );
       })(viewingMaterial)}
 
@@ -812,6 +822,7 @@ export default function DashboardPage() {
         />
       )}
 
+      {editStudent && selectedProfile && <AddStudentForm initialProfile={selectedProfile} onClose={() => setEditStudent(false)} onCreated={(updated) => {setProfiles((rows) => rows.map((p) => p.id === updated.id ? updated : p));setEditStudent(false);}} />}
       {/* Add Student Modal */}
       {showAddStudent && (
         <AddStudentForm
@@ -925,9 +936,9 @@ export default function DashboardPage() {
       {/* First-Day Material Viewer (shared by all five categories) */}
       {viewingFirstDayMaterial && ((mat: FirstDayMaterial) => {
         const parsed = safeParseContent(mat.contentJson);
-        const isViewable = mat.status === "ready" && parsed !== null;
+        const isViewable = mat.status === "ready" && parsed !== null && validOutput(mat.format, parsed);
         return (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <Dialog onClose={() => setViewingFirstDayMaterial(null)} className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
             <div className="w-full max-w-4xl max-h-[95vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
               {!isViewable ? (
                 <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 text-center space-y-3 text-white">
@@ -950,7 +961,7 @@ export default function DashboardPage() {
                   </button>
                 </div>
               ) : (
-                <>
+                <MaterialErrorBoundary key={mat.id} onClose={() => setViewingFirstDayMaterial(null)}>
                   {mat.format === "slide_deck" && (
                     <SlideDeckViewer content={parsed} onClose={() => setViewingFirstDayMaterial(null)} />
                   )}
@@ -960,10 +971,10 @@ export default function DashboardPage() {
                   {mat.format === "html_page" && (
                     <FirstDayWebpageViewer content={parsed} onClose={() => setViewingFirstDayMaterial(null)} />
                   )}
-                </>
+                </MaterialErrorBoundary>
               )}
             </div>
-          </div>
+          </Dialog>
         );
       })(viewingFirstDayMaterial)}
 

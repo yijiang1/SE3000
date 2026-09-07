@@ -3,6 +3,7 @@
 // Mirrors lib/materials.ts: each `run*` call POSTs to a planning route, then
 // patches the PlanningSession record in Dexie and returns the updated session.
 
+import { validateGoal } from "./goalValidation";
 import db from "./db";
 import { v4 as uuidv4 } from "uuid";
 import type {
@@ -95,7 +96,7 @@ export async function savePresentLevel(
   session: PlanningSession,
   input: PresentLevelInput
 ): Promise<PlanningSession> {
-  return persist({ ...session, input, subjectArea: input.subjectArea || session.subjectArea });
+  return persist({ ...session, input, subjectArea: input.subjectArea || session.subjectArea, instructionalUnit: undefined });
 }
 
 export async function runPlaafpAnalysis(
@@ -155,43 +156,29 @@ export async function commitRecommendedGoal(
 ): Promise<{ session: PlanningSession; profile: StudentIEPProfile; goal: IEPGoal }> {
   const rec = session.recommendedGoal;
   if (!rec) throw new Error("No recommended goal to commit.");
-  const now = new Date().toISOString();
-
-  const goal: IEPGoal = {
-    id: uuidv4(),
-    goalText: rec.annualGoalText,
-    category: rec.category,
-    baselineValue: rec.baselineValue,
-    targetValue: rec.targetValue,
-    measurementUnit: rec.measurementUnit,
-    trialsDenominator: rec.trialsDenominator,
-    reviewDate: profile.iepAnnualReviewDate,
-    createdAt: now,
-    targetSkill: rec.targetSkill,
-    baselineStatement: rec.baselineStatement,
-    measurementCriteria: rec.measurementCriteria,
-    masteryCriteria: rec.masteryCriteria,
-    progressMonitoringMethod: rec.progressMonitoringMethod,
-    shortTermObjectives: rec.shortTermObjectives,
-    instructionalLevel: session.plaafp?.instructionalLevel,
-    sourcePlanId: session.id,
-  };
-
-  const updatedProfile: StudentIEPProfile = {
-    ...profile,
-    goals: [...profile.goals, goal],
-    plaafpSummary: session.plaafp?.plaafpStatement || profile.plaafpSummary,
-    updatedAt: now,
-  };
-  await db.profiles.put(updatedProfile);
-
-  const updatedSession = await persist({
-    ...session,
-    goalId: goal.id,
-    status: "goal_committed",
+  return db.transaction("rw", db.profiles, db.planningSessions, async () => {
+    const currentProfile = await db.profiles.get(profile.id);
+    const currentSession = await db.planningSessions.get(session.id);
+    if (!currentProfile || !currentSession) throw new Error("Student or plan no longer exists.");
+    const now = new Date().toISOString();
+    const existing = currentProfile.goals.find((g) => g.id === currentSession.goalId || g.sourcePlanId === session.id);
+    const goal: IEPGoal = {
+      id: existing?.id ?? uuidv4(), goalText: rec.annualGoalText, category: rec.category,
+      baselineValue: rec.baselineValue, targetValue: rec.targetValue,
+      measurementUnit: rec.measurementUnit, trialsDenominator: rec.trialsDenominator,
+      reviewDate: currentProfile.iepAnnualReviewDate, createdAt: existing?.createdAt ?? now,
+      targetSkill: rec.targetSkill, baselineStatement: rec.baselineStatement,
+      measurementCriteria: rec.measurementCriteria, masteryCriteria: rec.masteryCriteria,
+      progressMonitoringMethod: rec.progressMonitoringMethod, shortTermObjectives: rec.shortTermObjectives,
+      instructionalLevel: session.plaafp?.instructionalLevel, sourcePlanId: session.id,
+    };
+    const invalid = validateGoal(goal);
+    if (invalid) throw new Error(invalid);
+    const updatedProfile = {...currentProfile, goals: existing ? currentProfile.goals.map((g) => g.id === existing.id ? goal : g) : [...currentProfile.goals, goal], plaafpSummary: session.plaafp?.plaafpStatement || currentProfile.plaafpSummary, updatedAt: now};
+    await db.profiles.put(updatedProfile);
+    const updatedSession = await persist({...currentSession, recommendedGoal: rec, plaafp: session.plaafp, goalId: goal.id, status: "goal_committed", instructionalUnit: undefined});
+    return {session:updatedSession, profile:updatedProfile, goal};
   });
-
-  return { session: updatedSession, profile: updatedProfile, goal };
 }
 
 export async function runInstructionalUnit(

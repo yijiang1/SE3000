@@ -1,3 +1,4 @@
+import { timedFetch } from "./timedFetch";
 // lib/ai/musicGen.ts — multi-provider real music generation with fallback chain
 //
 // Unlike video, MiniMax's music generation endpoint is synchronous — it
@@ -16,7 +17,7 @@ interface RawResult {
 }
 
 function isConfigured(id: MusicProviderId): boolean {
-  return MUSIC_PROVIDER_ENV[id].every((envVar) => {
+  return (MUSIC_PROVIDER_ENV[id] ?? []).length > 0 && MUSIC_PROVIDER_ENV[id].every((envVar) => {
     const v = process.env[envVar];
     return !!v && v.trim().length > 5;
   });
@@ -24,7 +25,7 @@ function isConfigured(id: MusicProviderId): boolean {
 
 async function callMiniMaxMusic({ stylePrompt, lyrics }: CallOpts): Promise<RawResult> {
   const apiKey = process.env.MINIMAX_API_KEY;
-  const res = await fetch("https://api.minimax.io/v1/music_generation", {
+  const res = await timedFetch("https://api.minimax.io/v1/music_generation", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
@@ -56,7 +57,7 @@ export interface MusicGenResult {
 export async function generateRealMusic(
   opts: CallOpts & { preferredOrder?: MusicProviderId[] }
 ): Promise<MusicGenResult | null> {
-  const order = (opts.preferredOrder?.length ? opts.preferredOrder : DEFAULT_MUSIC_PROVIDER_ORDER).filter(
+  const order = (opts.preferredOrder ?? DEFAULT_MUSIC_PROVIDER_ORDER).filter(
     isConfigured
   );
 

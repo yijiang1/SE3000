@@ -1,6 +1,9 @@
 "use client";
-// components/materials/SlideDeckViewer.tsx — Interactive slide deck presenter & PDF exporter
+// components/materials/SlideDeckViewer.tsx — Interactive slide deck presenter with PDF + PowerPoint (.pptx) export
 
+import { printHtml } from "@/lib/print";
+import { escapeHtml } from "@/lib/safeHtml";
+import { downloadSlideDeckPptx } from "@/lib/pptx";
 import { useState, useEffect } from "react";
 import {
   ChevronLeft,
@@ -8,6 +11,8 @@ import {
   Volume2,
   VolumeX,
   Printer,
+  FileDown,
+  Loader2,
   Maximize2,
   Minimize2,
   HelpCircle,
@@ -30,6 +35,8 @@ export default function SlideDeckViewer({ content, onClose }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(false);
 
   const slides = content.slides || [];
   const activeSlide = slides[currentIdx] || {
@@ -41,6 +48,7 @@ export default function SlideDeckViewer({ content, onClose }: Props) {
   // Keyboard navigation (Left / Right arrow keys)
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      if ((e.target as HTMLElement)?.closest("button,input,select,textarea,a,[contenteditable=true]")) return;
       if (e.key === "ArrowRight" || e.key === " ") {
         e.preventDefault();
         setCurrentIdx((prev) => Math.min(slides.length - 1, prev + 1));
@@ -54,6 +62,11 @@ export default function SlideDeckViewer({ content, onClose }: Props) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [slides.length, isFullscreen]);
+
+  useEffect(() => {
+    setIsSpeaking(false);
+    return () => { window.speechSynthesis?.cancel(); };
+  }, [currentIdx]);
 
   // Audio Read-Aloud via Web Speech API (Accessibility support)
   function handleToggleSpeech() {
@@ -82,7 +95,22 @@ export default function SlideDeckViewer({ content, onClose }: Props) {
   }
 
   function handlePrint() {
-    window.print();
+    printHtml(`<h1>${escapeHtml(content.title)}</h1>` + slides.map((slide) => `<section style="break-after:page"><h2>${slide.slideNumber}. ${escapeHtml(slide.title)}</h2><ul>${slide.content.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>${slide.interactiveQuestion ? `<p>${escapeHtml(slide.interactiveQuestion.question)}</p><ul>${slide.interactiveQuestion.options.map((option) => `<li>${escapeHtml(option)}</li>`).join("")}</ul>` : ""}${showNotes ? `<p>Teacher notes: ${escapeHtml(slide.teacherNotes || "")}</p>` : ""}</section>`).join(""));
+  }
+
+  async function handleExportPptx() {
+    if (exporting) return;
+    setExportError(false);
+    setExporting(true);
+    try {
+      await downloadSlideDeckPptx(content);
+    } catch (err) {
+      console.error("PowerPoint export failed:", err);
+      setExportError(true);
+      setTimeout(() => setExportError(false), 6000);
+    } finally {
+      setExporting(false);
+    }
   }
 
   function handleSelectOption(optIdx: number) {
@@ -143,6 +171,21 @@ export default function SlideDeckViewer({ content, onClose }: Props) {
           >
             <Eye className="w-4 h-4" />
             <span className="hidden sm:inline">Teacher Notes</span>
+          </button>
+
+          <button
+            onClick={handleExportPptx}
+            disabled={exporting}
+            className={clsx(
+              "p-2 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-60",
+              exportError ? "bg-rose-600 text-white" : "bg-slate-700 hover:bg-slate-600 text-slate-200"
+            )}
+            title={exportError ? "Export failed — try again" : "Download as PowerPoint (.pptx)"}
+          >
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+            <span className="hidden sm:inline">
+              {exporting ? "Exporting…" : exportError ? "Failed" : "PowerPoint"}
+            </span>
           </button>
 
           <button
@@ -278,7 +321,7 @@ export default function SlideDeckViewer({ content, onClose }: Props) {
                     Visual Context / Image Prompt:
                   </span>
                   <p className="text-xs text-slate-400 italic mt-1 bg-slate-900/40 p-2.5 rounded-lg">
-                    "{activeSlide.imagePrompt}"
+                    &quot;{activeSlide.imagePrompt}&quot;
                   </p>
                 </div>
               )}

@@ -1,5 +1,7 @@
 // lib/trending.ts — Linear regression trend classifier for goal progress
 
+import { compareObservations, validateValue } from "./goalValidation";
+import { validDate } from "./dates";
 import type { IEPGoal, ProgressLogEntry, TrendResult } from "@/types/iep";
 
 /** Parse an ISO date string into a JS Date (handles "YYYY-MM-DD" correctly). */
@@ -51,9 +53,7 @@ export function computeTrend(
   goal: IEPGoal,
   entries: ProgressLogEntry[]
 ): TrendResult {
-  const sorted = [...entries].sort(
-    (a, b) => parseDate(a.date).getTime() - parseDate(b.date).getTime()
-  );
+  const sorted = entries.filter((e) => validDate(e.date) && !validateValue(goal, e.value)).sort(compareObservations);
 
   if (sorted.length === 0) {
     return {
@@ -70,9 +70,9 @@ export function computeTrend(
   const percentToTarget =
     range !== 0
       ? Math.round(((latestValue - goal.baselineValue) / range) * 100)
-      : 100;
+      : latestValue === goal.targetValue ? 100 : 0;
 
-  if (sorted.length < 2) {
+  if (new Set(sorted.map((e) => e.date)).size < 2 || !validDate(goal.reviewDate)) {
     return {
       status: "no_data",
       projectedValue: null,
@@ -92,17 +92,14 @@ export function computeTrend(
   }));
 
   const { slope, intercept } = linearRegression(points);
-  const projectedValue = intercept + slope * daysToReview;
-  const threshold = goal.targetValue * 0.85;
-
-  let status: TrendResult["status"];
-  if (projectedValue >= goal.targetValue) {
-    status = "on_track";
-  } else if (projectedValue >= threshold) {
-    status = "at_risk";
-  } else {
-    status = "off_track";
-  }
+  const rawProjection = intercept + slope * daysToReview;
+  const upper = goal.measurementUnit === "%" ? 100 : goal.measurementUnit === "rating_scale" ? 5 : goal.measurementUnit === "trials" ? goal.trialsDenominator! : Infinity;
+  const lower = goal.measurementUnit === "rating_scale" ? 1 : 0;
+  const projectedValue = Math.max(lower, Math.min(upper, rawProjection));
+  const direction = Math.sign(goal.targetValue - goal.baselineValue);
+  const distance = Math.abs(goal.targetValue - goal.baselineValue);
+  const shortfall = direction === 0 ? Math.abs(projectedValue - goal.targetValue) : (goal.targetValue - projectedValue) * direction;
+  const status: TrendResult["status"] = shortfall <= 0 ? "on_track" : shortfall <= distance * 0.15 ? "at_risk" : "off_track";
 
   return {
     status,
