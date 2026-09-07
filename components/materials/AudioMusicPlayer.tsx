@@ -15,6 +15,8 @@ export default function AudioMusicPlayer({ content, onClose }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0); // 0 to 100
   const synthTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const hasRealAudio = !!content.audioUrl;
 
   // Web Audio synthetic musical tone player (plays harmonic progression when no raw mp3 is attached)
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -54,6 +56,19 @@ export default function AudioMusicPlayer({ content, onClose }: Props) {
   }
 
   function togglePlay() {
+    if (hasRealAudio) {
+      const el = audioElRef.current;
+      if (!el) return;
+      if (isPlaying) {
+        el.pause();
+        setIsPlaying(false);
+      } else {
+        el.play();
+        setIsPlaying(true);
+      }
+      return;
+    }
+
     if (isPlaying) {
       setIsPlaying(false);
       if (synthTimerRef.current) clearInterval(synthTimerRef.current);
@@ -84,6 +99,21 @@ export default function AudioMusicPlayer({ content, onClose }: Props) {
     setProgress(0);
     setIsPlaying(false);
     if (synthTimerRef.current) clearInterval(synthTimerRef.current);
+    if (audioElRef.current) {
+      audioElRef.current.pause();
+      audioElRef.current.currentTime = 0;
+    }
+  }
+
+  function handleAudioTimeUpdate() {
+    const el = audioElRef.current;
+    if (!el || !el.duration) return;
+    setProgress((el.currentTime / el.duration) * 100);
+  }
+
+  function handleAudioEnded() {
+    setIsPlaying(false);
+    setProgress(0);
   }
 
   function handleDownloadLyrics() {
@@ -108,7 +138,9 @@ export default function AudioMusicPlayer({ content, onClose }: Props) {
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                Lyria 3 {content.modelUsed === "lyria-3-pro" ? "Pro Track" : "Clip (30s)"}
+                {hasRealAudio
+                  ? "AI-Generated Track"
+                  : `Lyria 3 ${content.modelUsed === "lyria-3-pro" ? "Pro Track" : "Clip (30s)"}`}
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300">
                 {content.purpose.replace("_", " ")}
@@ -133,6 +165,16 @@ export default function AudioMusicPlayer({ content, onClose }: Props) {
           )}
         </div>
       </div>
+
+      {hasRealAudio && (
+        <audio
+          ref={audioElRef}
+          src={content.audioUrl}
+          onTimeUpdate={handleAudioTimeUpdate}
+          onEnded={handleAudioEnded}
+          className="hidden"
+        />
+      )}
 
       {/* ─── Audio Visualizer Waves & Metadata ───────────────────── */}
       <div className="p-6 rounded-2xl bg-slate-950/60 border border-indigo-900/60 flex flex-col items-center space-y-5">

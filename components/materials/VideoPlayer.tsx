@@ -88,7 +88,7 @@ export default function VideoPlayer({ content, onClose }: Props) {
           <div>
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                Veo 3.1 Animated Storyboard
+                {content.videoUrl ? "AI-Generated Video" : "Veo 3.1 Animated Storyboard"}
               </span>
               <span className="text-xs text-slate-400">Theme: {content.theme}</span>
             </div>
@@ -104,6 +104,14 @@ export default function VideoPlayer({ content, onClose }: Props) {
       </div>
 
       {/* ─── Video Canvas Stage ─────────────────────────────────── */}
+      {content.videoUrl ? (
+        <video
+          src={content.videoUrl}
+          controls
+          autoPlay={false}
+          className="w-full max-h-[380px] aspect-video bg-black"
+        />
+      ) : (
       <div className="relative aspect-video max-h-[380px] w-full bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex flex-col justify-between p-6 overflow-hidden">
         {/* Scene Indicator & Badges */}
         <div className="flex items-center justify-between z-10">
@@ -144,8 +152,10 @@ export default function VideoPlayer({ content, onClose }: Props) {
           }}
         />
       </div>
+      )}
 
-      {/* ─── Timeline & Controls ─────────────────────────────────── */}
+      {/* ─── Timeline & Controls (storyboard simulation only) ────── */}
+      {!content.videoUrl && (
       <div className="p-5 bg-slate-850 border-t border-slate-700 space-y-4">
         {/* Timeline Bar */}
         <div className="flex items-center gap-2">
@@ -214,6 +224,7 @@ export default function VideoPlayer({ content, onClose }: Props) {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

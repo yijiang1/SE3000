@@ -1,21 +1,23 @@
 // app/api/generate/video/route.ts — Veo 3.1 Video generation & storyboard orchestrator
 
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
 import type { GenerationContext, VideoContent } from "@/types/iep";
 import { formatContextForPrompt } from "@/lib/generators/context";
+import { generateJSON } from "@/lib/ai/textGen";
+import { generateRealVideo } from "@/lib/ai/videoGen";
+import { estimateTextCost, VIDEO_COST_ESTIMATE, type ProviderPreferences } from "@/lib/ai/providers";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const ctx: GenerationContext = body.context;
     const customPrompt: string | undefined = body.customPrompt;
+    const providerPreferences: ProviderPreferences | undefined = body.providerPreferences;
 
     if (!ctx || !ctx.student || !ctx.goal) {
       return NextResponse.json({ error: "Missing required generation context" }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
     const studentInterest = ctx.student.interests[0] || "Exploration";
     const promptText = `
 You are an expert Educational Animator & Creative Director for Special Education video production.
@@ -49,65 +51,64 @@ Respond with valid JSON matching this exact structure:
 }
 `.trim();
 
-    if (apiKey && apiKey.trim().length > 5) {
-      try {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: promptText,
-          config: {
-            responseMimeType: "application/json",
-            temperature: 0.4,
+    const scriptAi = await generateJSON(promptText, { temperature: 0.4, preferredOrder: providerPreferences?.text });
+    const storyboard: VideoContent =
+      scriptAi?.json || {
+        title: `${studentInterest} Mastery Story: ${ctx.goal.category.toUpperCase()}`,
+        theme: studentInterest,
+        hasNarration: true,
+        hasMusic: true,
+        modelUsed: "veo-3.1-fast",
+        scenes: [
+          {
+            sceneNumber: 1,
+            visualDescription: `Vibrant, high-contrast animated scene of a friendly ${studentInterest} world at sunrise, gentle camera push in.`,
+            durationSeconds: 4,
+            narrationCue: `Welcome, ${ctx.student.initials}! Our ${studentInterest} learning journey starts now.`
           },
-        });
+          {
+            sceneNumber: 2,
+            visualDescription: `The main character demonstrates the goal skill step-by-step with glowing visual stars floating up.`,
+            durationSeconds: 4,
+            narrationCue: `Watch closely: when we apply our strategy, we move closer to our ${ctx.goal.targetValue}${ctx.goal.measurementUnit} target!`
+          },
+          {
+            sceneNumber: 3,
+            visualDescription: `A celebratory ${studentInterest} fireworks and confetti display with a grand gold trophy shining.`,
+            durationSeconds: 4,
+            narrationCue: `You've got the power! Keep up the amazing work!`
+          }
+        ]
+      };
 
-        const rawText = response.text || "{}";
-        const cleanJson = rawText.replace(/```json\n?|\n?```/g, "").trim();
-        const parsed: VideoContent = JSON.parse(cleanJson);
+    // Attempt a real, playable video clip from the storyboard. If no video
+    // provider is configured (or the generation fails/times out), we still
+    // return the storyboard script alone — VideoPlayer simulates it.
+    const combinedPrompt = storyboard.scenes
+      .map((s) => s.visualDescription)
+      .join(" Then, ")
+      .slice(0, 2000);
+    const totalDuration = storyboard.scenes.reduce((sum, s) => sum + s.durationSeconds, 0) || 8;
+    const realVideo = await generateRealVideo({
+      prompt: combinedPrompt,
+      durationSeconds: totalDuration,
+      preferredOrder: providerPreferences?.video,
+    }).catch((err) => {
+      console.warn("[Real video generation]", err?.message);
+      return null;
+    });
 
-        return NextResponse.json({
-          content: parsed,
-          modelUsed: "veo-3.1-fast",
-          costEstimate: 0.40,
-        });
-      } catch (geminiErr: any) {
-        console.warn("[Veo storyboard fallback]", geminiErr?.message);
-      }
-    }
-
-    // High quality offline storyboard fallback
-    const synthesized: VideoContent = {
-      title: `${studentInterest} Mastery Story: ${ctx.goal.category.toUpperCase()}`,
-      theme: studentInterest,
-      hasNarration: true,
-      hasMusic: true,
-      modelUsed: "veo-3.1-fast",
-      scenes: [
-        {
-          sceneNumber: 1,
-          visualDescription: `Vibrant, high-contrast animated scene of a friendly ${studentInterest} world at sunrise, gentle camera push in.`,
-          durationSeconds: 4,
-          narrationCue: `Welcome, ${ctx.student.initials}! Our ${studentInterest} learning journey starts now.`
-        },
-        {
-          sceneNumber: 2,
-          visualDescription: `The main character demonstrates the goal skill step-by-step with glowing visual stars floating up.`,
-          durationSeconds: 4,
-          narrationCue: `Watch closely: when we apply our strategy, we move closer to our ${ctx.goal.targetValue}${ctx.goal.measurementUnit} target!`
-        },
-        {
-          sceneNumber: 3,
-          visualDescription: `A celebratory ${studentInterest} fireworks and confetti display with a grand gold trophy shining.`,
-          durationSeconds: 4,
-          narrationCue: `You've got the power! Keep up the amazing work!`
-        }
-      ]
-    };
+    const content: VideoContent = { ...storyboard, videoUrl: realVideo?.videoUrl };
 
     return NextResponse.json({
-      content: synthesized,
-      modelUsed: "veo-3.1-fast",
-      costEstimate: 0.0,
+      content,
+      modelUsed: realVideo?.model || "veo-3.1-fast",
+      provider: realVideo?.provider || scriptAi?.provider,
+      costEstimate: realVideo
+        ? VIDEO_COST_ESTIMATE[realVideo.provider]
+        : scriptAi
+        ? estimateTextCost(scriptAi.provider, 0.4)
+        : 0.0,
     });
   } catch (error: any) {
     console.error("Video generation error:", error);

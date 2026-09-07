@@ -1,8 +1,9 @@
 // app/api/generate/narration/route.ts — OpenAI TTS audio narration generator
 
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
 import type { GenerationContext, NarrationContent } from "@/types/iep";
+import { generateSpeech } from "@/lib/ai/ttsGen";
+import { TTS_COST_ESTIMATE, type ProviderPreferences } from "@/lib/ai/providers";
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,6 +12,7 @@ export async function POST(req: NextRequest) {
     const voice: NarrationContent["voice"] = body.voice || "nova";
     const speed: number = typeof body.speed === "number" ? body.speed : 0.9;
     const textOverride: string | undefined = body.textOverride;
+    const providerPreferences: ProviderPreferences | undefined = body.providerPreferences;
 
     if (!ctx || !ctx.student || !ctx.goal) {
       return NextResponse.json({ error: "Missing required generation context" }, { status: 400 });
@@ -34,41 +36,22 @@ export async function POST(req: NextRequest) {
       durationSeconds: Math.max(2, Math.round(text.split(" ").length * 0.5)),
     }));
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    let audioBase64: string | undefined = undefined;
-
-    if (apiKey && apiKey.trim().length > 5) {
-      try {
-        const openai = new OpenAI({ apiKey });
-        const mp3Response = await openai.audio.speech.create({
-          model: "tts-1",
-          voice: voice,
-          input: script,
-          speed: speed,
-          response_format: "mp3",
-        });
-
-        const arrayBuffer = await mp3Response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        audioBase64 = `data:audio/mp3;base64,${buffer.toString("base64")}`;
-      } catch (openAiErr: any) {
-        console.warn("[OpenAI TTS API fallback]", openAiErr?.message);
-      }
-    }
+    const tts = await generateSpeech({ text: script, voice, speed, preferredOrder: providerPreferences?.tts });
 
     const content: NarrationContent = {
       title: `${studentInterest} Read-Along Narration`,
       voice,
       speed,
       fullTranscript: script,
-      audioUrl: audioBase64,
+      audioUrl: tts?.audioBase64,
       segments,
     };
 
     return NextResponse.json({
       content,
-      modelUsed: audioBase64 ? "openai-tts-1" : "web-speech-narrator",
-      costEstimate: audioBase64 ? 0.01 : 0.0,
+      modelUsed: tts?.model || "web-speech-narrator",
+      provider: tts?.provider,
+      costEstimate: tts ? TTS_COST_ESTIMATE[tts.provider] : 0.0,
     });
   } catch (error: any) {
     console.error("Narration generation error:", error);
