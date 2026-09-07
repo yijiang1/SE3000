@@ -550,6 +550,126 @@ export interface ProgressAnalysis {
   createdAt: string;
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// First-Day Materials Hub
+//
+// Unlike GeneratedMaterial, these are NOT tied to a student profile or IEP
+// goal — they're first-day-of-class materials (slide deck, webpage, video)
+// covering five categories:
+//   1. "teacher_intro"           — introduces the teacher themself
+//   2. "classroom_expectations"  — classroom rules, routines & procedures
+//   3. "icebreaker_activities"   — get-to-know-you activities for day one
+//   4. "family_letter"           — welcome letter home to families
+//   5. "getting_to_know_you"     — printable "about me" questionnaire for students
+// ────────────────────────────────────────────────────────────────────────────
+export type FirstDayMaterialCategory =
+  | "teacher_intro"
+  | "classroom_expectations"
+  | "icebreaker_activities"
+  | "family_letter"
+  | "getting_to_know_you";
+
+export interface TeacherProfile {
+  id: string;                    // singleton row, always "current-teacher"
+  name: string;
+  roleTitle: string;             // e.g. "5th Grade Special Education Teacher"
+  subjectsOrGrades: string;      // e.g. "Grades 3-5 Resource Room"
+  yearsExperience?: string;
+  hobbiesAndInterests: string[]; // e.g. ["Hiking", "Baking", "Board Games"]
+  funFacts: string[];            // e.g. ["I once met an astronaut"]
+  favoriteQuote?: string;
+  teachingPhilosophy?: string;
+  funLearningGoalForStudents?: string; // what you hope students take away
+  contactInfo?: string;          // e.g. "Room 204 · Office hours Tue/Thu 3-4pm"
+  themeColor?: string;           // hex accent color for generated materials
+  photoDataUrl?: string;         // optional base64 self-portrait / avatar
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Teacher's own classroom rules, routines & expectations — used to generate
+// first-day "how our classroom works" materials.
+export interface ClassroomProfile {
+  id: string;                    // singleton row, always "current-classroom"
+  classroomName?: string;        // e.g. "Room 204" or a themed name
+  rules: string[];               // e.g. ["Be respectful", "Raise your hand to speak"]
+  routines: string[];            // e.g. ["Morning check-in at the door", "Line up quietly for lunch"]
+  rewardsSystem?: string;        // e.g. "Class points redeemable for a Friday game"
+  consequencesSystem?: string;   // e.g. "Verbal reminder -> visual warning -> brief break -> parent contact"
+  theme?: string;                // e.g. "Space Explorer Classroom" — woven into generated materials
+  additionalNotes?: string;
+  themeColor?: string;           // hex accent color for generated materials
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Icebreaker activities to help students get to know each other on day one.
+export interface IcebreakerProfile {
+  id: string;                    // singleton row, always "current-icebreakers"
+  theme?: string;                // e.g. "Space Explorers" — woven into generated activities
+  groupSize: string;             // e.g. "Whole class", "Small groups of 4", "Pairs"
+  durationMinutes?: string;      // e.g. "10-15 minutes"
+  numberOfActivities: number;    // e.g. 3
+  activityStyles: string[];      // e.g. ["Get-to-know-you questions", "Movement games", "Team challenges"]
+  specialConsiderations?: string; // sensory/communication accommodations to build in
+  additionalNotes?: string;
+  themeColor?: string;           // hex accent color for generated materials
+  createdAt: string;
+  updatedAt: string;
+}
+
+// A printable "get to know you" questionnaire for students to fill out.
+// Family Welcome Letter has no dedicated profile — it's generated from the
+// existing TeacherProfile (+ optional ClassroomProfile) instead.
+export interface SurveyProfile {
+  id: string;                    // singleton row, always "current-survey"
+  title: string;                 // e.g. "All About Me!"
+  introMessage?: string;         // short instructions shown at the top
+  questions: string[];           // open-ended getting-to-know-you prompts
+  theme?: string;                // e.g. "Space Explorers" — woven into generated materials
+  themeColor?: string;           // hex accent color for generated materials
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type FirstDayMaterialFormat = "slide_deck" | "html_page" | "video_clip";
+
+export interface FirstDaySection {
+  heading: string;
+  body: string;
+  emoji?: string;
+}
+
+// Content structure for the "html_page" format — a standalone webpage
+export interface FirstDayWebpageContent {
+  title: string;
+  tagline: string;
+  themeColor: string;
+  sections: FirstDaySection[];
+  highlights: string[];          // fun facts (teacher_intro) or key rules at a glance (classroom_expectations)
+  contactBlock?: string;
+  html: string;                  // full self-contained HTML fragment to render
+}
+
+export type FirstDayMaterialContent = SlideDeckContent | FirstDayWebpageContent | VideoContent;
+
+export interface FirstDayMaterial {
+  id: string;
+  category: FirstDayMaterialCategory;
+  format: FirstDayMaterialFormat;
+  status: GenerationStatus;
+  title: string;
+  description: string;
+  promptUsed: string;
+  modelUsed: string;
+  generationCostEstimate?: number;
+  contentJson?: string;          // Serialized FirstDayMaterialContent
+  blobKeys?: string[];
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ── Root planning document stored in IndexedDB ──────────────────────────
 export type PlanningSessionStatus = "draft" | "goal_committed" | "active";
 

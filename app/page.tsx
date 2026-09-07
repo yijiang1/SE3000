@@ -11,11 +11,27 @@ import {
   Layers,
   GraduationCap,
   AlertTriangle,
-  ClipboardList
+  ClipboardList,
+  Smile,
+  Users,
+  Mail,
+  MessageCircleHeart
 } from "lucide-react";
 import db from "@/lib/db";
 import { seedIfEmpty } from "@/lib/seed";
 import { cleanupStaleMaterials } from "@/lib/materials";
+import {
+  getTeacherProfile,
+  getClassroomProfile,
+  getIcebreakerProfile,
+  getSurveyProfile,
+  getFirstDayMaterials,
+  cleanupStaleFirstDayMaterials,
+  emptyTeacherProfile,
+  emptyClassroomProfile,
+  emptyIcebreakerProfile,
+  emptySurveyProfile
+} from "@/lib/firstDayMaterials";
 import { getPlanningSessionsForProfile } from "@/lib/planning";
 import { computeTrend } from "@/lib/trending";
 import type {
@@ -24,7 +40,13 @@ import type {
   TrendResult,
   GeneratedMaterial,
   IEPGoal,
-  PlanningSession
+  PlanningSession,
+  TeacherProfile,
+  ClassroomProfile,
+  IcebreakerProfile,
+  SurveyProfile,
+  FirstDayMaterial,
+  FirstDayMaterialCategory
 } from "@/types/iep";
 import StudentHeader from "@/components/StudentHeader";
 import GoalCard from "@/components/GoalCard";
@@ -37,6 +59,12 @@ import MaterialGeneratorModal from "@/components/MaterialGeneratorModal";
 import MaterialsGallery from "@/components/MaterialsGallery";
 import PlanningSessionsSection from "@/components/planning/PlanningSessionsSection";
 import PlanningAssistantModal from "@/components/planning/PlanningAssistantModal";
+import TeacherProfileForm from "@/components/TeacherProfileForm";
+import ClassroomProfileForm from "@/components/ClassroomProfileForm";
+import IcebreakerProfileForm from "@/components/IcebreakerProfileForm";
+import SurveyProfileForm from "@/components/SurveyProfileForm";
+import FirstDayGeneratorModal from "@/components/FirstDayGeneratorModal";
+import FirstDayMaterialsGallery from "@/components/FirstDayMaterialsGallery";
 
 // Interactive Material Presenters
 import SlideDeckViewer from "@/components/materials/SlideDeckViewer";
@@ -46,6 +74,7 @@ import AudioMusicPlayer from "@/components/materials/AudioMusicPlayer";
 import NarrationPlayer from "@/components/materials/NarrationPlayer";
 import VideoPlayer from "@/components/materials/VideoPlayer";
 import WorksheetViewer from "@/components/materials/WorksheetViewer";
+import FirstDayWebpageViewer from "@/components/materials/FirstDayWebpageViewer";
 
 /** Parse a stored material's contentJson, returning null instead of throwing. */
 function safeParseContent(json: string | undefined): any | null {
@@ -66,6 +95,24 @@ export default function DashboardPage() {
   const [planningSessions, setPlanningSessions] = useState<PlanningSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
+
+  // First-Day Materials Hub (Teacher Introduction, Classroom Expectations, Icebreaker
+  // Activities, Family Welcome Letter & Getting-to-Know-You Survey) — not tied to any student
+  const [teacherProfile, setTeacherProfile] = useState<TeacherProfile | null>(null);
+  const [classroomProfile, setClassroomProfile] = useState<ClassroomProfile | null>(null);
+  const [icebreakerProfile, setIcebreakerProfile] = useState<IcebreakerProfile | null>(null);
+  const [surveyProfile, setSurveyProfile] = useState<SurveyProfile | null>(null);
+  const [teacherMaterials, setTeacherMaterials] = useState<FirstDayMaterial[]>([]);
+  const [classroomMaterials, setClassroomMaterials] = useState<FirstDayMaterial[]>([]);
+  const [icebreakerMaterials, setIcebreakerMaterials] = useState<FirstDayMaterial[]>([]);
+  const [familyLetterMaterials, setFamilyLetterMaterials] = useState<FirstDayMaterial[]>([]);
+  const [surveyMaterials, setSurveyMaterials] = useState<FirstDayMaterial[]>([]);
+  const [showTeacherProfileForm, setShowTeacherProfileForm] = useState(false);
+  const [showClassroomProfileForm, setShowClassroomProfileForm] = useState(false);
+  const [showIcebreakerProfileForm, setShowIcebreakerProfileForm] = useState(false);
+  const [showSurveyProfileForm, setShowSurveyProfileForm] = useState(false);
+  const [generatorCategory, setGeneratorCategory] = useState<FirstDayMaterialCategory | null>(null);
+  const [viewingFirstDayMaterial, setViewingFirstDayMaterial] = useState<FirstDayMaterial | null>(null);
 
   // Modals & Drawers state
   const [showPlaafp, setShowPlaafp] = useState(false);
@@ -100,6 +147,36 @@ export default function DashboardPage() {
     }
   }, [selectedId]);
 
+  // Load the teacher's "About Me" & classroom profiles plus their generated first-day materials
+  const loadFirstDayData = useCallback(async () => {
+    try {
+      const purged = await cleanupStaleFirstDayMaterials();
+      if (purged > 0) console.info(`[SE 3000] Cleared ${purged} interrupted first-day generation(s).`);
+    } catch (err) {
+      console.warn("[SE 3000] Stale first-day material cleanup failed:", err);
+    }
+    const [teacher, classroom, icebreaker, survey, teacherMats, classroomMats, icebreakerMats, familyLetterMats, surveyMats] = await Promise.all([
+      getTeacherProfile(),
+      getClassroomProfile(),
+      getIcebreakerProfile(),
+      getSurveyProfile(),
+      getFirstDayMaterials("teacher_intro"),
+      getFirstDayMaterials("classroom_expectations"),
+      getFirstDayMaterials("icebreaker_activities"),
+      getFirstDayMaterials("family_letter"),
+      getFirstDayMaterials("getting_to_know_you"),
+    ]);
+    setTeacherProfile(teacher);
+    setClassroomProfile(classroom);
+    setIcebreakerProfile(icebreaker);
+    setSurveyProfile(survey);
+    setTeacherMaterials(teacherMats);
+    setClassroomMaterials(classroomMats);
+    setIcebreakerMaterials(icebreakerMats);
+    setFamilyLetterMaterials(familyLetterMats);
+    setSurveyMaterials(surveyMats);
+  }, []);
+
   // Load logs and generated materials for selected student
   const loadStudentData = useCallback(async () => {
     if (!selectedId) return;
@@ -133,6 +210,7 @@ export default function DashboardPage() {
         );
       })
       .finally(() => setLoading(false));
+    loadFirstDayData().catch((err) => console.warn("[SE 3000] Failed to load first-day materials data:", err));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -181,6 +259,32 @@ export default function DashboardPage() {
     loadStudentData();
     // Immediately launch the created material in its player
     setViewingMaterial(mat);
+  }
+
+  function handleTeacherProfileSaved(profile: TeacherProfile) {
+    setTeacherProfile(profile);
+    setShowTeacherProfileForm(false);
+  }
+
+  function handleClassroomProfileSaved(profile: ClassroomProfile) {
+    setClassroomProfile(profile);
+    setShowClassroomProfileForm(false);
+  }
+
+  function handleIcebreakerProfileSaved(profile: IcebreakerProfile) {
+    setIcebreakerProfile(profile);
+    setShowIcebreakerProfileForm(false);
+  }
+
+  function handleSurveyProfileSaved(profile: SurveyProfile) {
+    setSurveyProfile(profile);
+    setShowSurveyProfileForm(false);
+  }
+
+  function handleFirstDayMaterialCreated(mat: FirstDayMaterial) {
+    setGeneratorCategory(null);
+    loadFirstDayData();
+    setViewingFirstDayMaterial(mat);
   }
 
   if (loading) {
@@ -286,6 +390,102 @@ export default function DashboardPage() {
 
       {/* ─── Main Content Container ─────────────────────────────── */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* First-Day Materials Hub (not tied to any student) */}
+        <FirstDayMaterialsGallery
+          accent="amber"
+          icon={Smile}
+          heading="First-Day Teacher Introduction"
+          subtitle={
+            teacherProfile?.name
+              ? `Materials to introduce ${teacherProfile.name} (${teacherProfile.roleTitle}) on day one.`
+              : "Create your teacher profile to generate About-Me materials for the first lesson."
+          }
+          hasProfile={!!teacherProfile?.name}
+          emptyProfileTitle="No teacher profile yet"
+          emptyProfileBody="Add your name, role, hobbies, and fun facts so SE 3000 can generate a slide deck, webpage, or video introducing you on the first day."
+          materials={teacherMaterials}
+          onOpenMaterial={(mat) => setViewingFirstDayMaterial(mat)}
+          onOpenGenerator={() => setGeneratorCategory("teacher_intro")}
+          onEditProfile={() => setShowTeacherProfileForm(true)}
+          onMaterialDeleted={loadFirstDayData}
+        />
+
+        <FirstDayMaterialsGallery
+          accent="teal"
+          icon={ClipboardList}
+          heading="Classroom Expectations & Rules"
+          subtitle={
+            classroomProfile && (classroomProfile.rules.length > 0 || classroomProfile.routines.length > 0)
+              ? `Materials explaining how ${classroomProfile.classroomName || "your classroom"} works on day one.`
+              : "Add your classroom rules & routines to generate first-day expectations materials."
+          }
+          hasProfile={!!classroomProfile && (classroomProfile.rules.length > 0 || classroomProfile.routines.length > 0)}
+          emptyProfileTitle="No classroom rules set up yet"
+          emptyProfileBody="Add your classroom rules, routines, and rewards system so SE 3000 can generate a slide deck, webpage, or video explaining how your classroom works."
+          materials={classroomMaterials}
+          onOpenMaterial={(mat) => setViewingFirstDayMaterial(mat)}
+          onOpenGenerator={() => setGeneratorCategory("classroom_expectations")}
+          onEditProfile={() => setShowClassroomProfileForm(true)}
+          onMaterialDeleted={loadFirstDayData}
+        />
+
+        <FirstDayMaterialsGallery
+          accent="pink"
+          icon={Users}
+          heading="Icebreaker Activities"
+          subtitle={
+            icebreakerProfile && icebreakerProfile.groupSize
+              ? `Get-to-know-you activities for ${icebreakerProfile.groupSize.toLowerCase()} on day one.`
+              : "Set your activity preferences to generate first-day icebreaker materials."
+          }
+          hasProfile={!!icebreakerProfile?.groupSize}
+          emptyProfileTitle="No icebreaker preferences set up yet"
+          emptyProfileBody="Choose your group size, duration, and activity styles so SE 3000 can generate fun get-to-know-you activities for the first day."
+          materials={icebreakerMaterials}
+          onOpenMaterial={(mat) => setViewingFirstDayMaterial(mat)}
+          onOpenGenerator={() => setGeneratorCategory("icebreaker_activities")}
+          onEditProfile={() => setShowIcebreakerProfileForm(true)}
+          onMaterialDeleted={loadFirstDayData}
+        />
+
+        <FirstDayMaterialsGallery
+          accent="indigo"
+          icon={Mail}
+          heading="Family Welcome Letter"
+          subtitle={
+            teacherProfile?.name
+              ? `A welcome letter home from ${teacherProfile.name}${classroomProfile?.classroomName ? ` (${classroomProfile.classroomName})` : ""}.`
+              : "Set up your teacher profile to generate a family welcome letter."
+          }
+          hasProfile={!!teacherProfile?.name}
+          emptyProfileTitle="No teacher profile yet"
+          emptyProfileBody="This reuses your Teacher Introduction profile (plus your classroom rules, if set) to write a welcome letter home to families."
+          materials={familyLetterMaterials}
+          onOpenMaterial={(mat) => setViewingFirstDayMaterial(mat)}
+          onOpenGenerator={() => setGeneratorCategory("family_letter")}
+          onEditProfile={() => setShowTeacherProfileForm(true)}
+          onMaterialDeleted={loadFirstDayData}
+        />
+
+        <FirstDayMaterialsGallery
+          accent="violet"
+          icon={MessageCircleHeart}
+          heading="Getting-to-Know-You Survey"
+          subtitle={
+            surveyProfile && surveyProfile.questions.length > 0
+              ? `"${surveyProfile.title}" · ${surveyProfile.questions.length} question${surveyProfile.questions.length !== 1 ? "s" : ""}`
+              : "Set up your questions to generate a printable getting-to-know-you questionnaire."
+          }
+          hasProfile={!!surveyProfile && surveyProfile.questions.length > 0}
+          emptyProfileTitle="No survey questions set up yet"
+          emptyProfileBody="Add a few getting-to-know-you questions so SE 3000 can generate a printable questionnaire or a live class-interview slide deck."
+          materials={surveyMaterials}
+          onOpenMaterial={(mat) => setViewingFirstDayMaterial(mat)}
+          onOpenGenerator={() => setGeneratorCategory("getting_to_know_you")}
+          onEditProfile={() => setShowSurveyProfileForm(true)}
+          onMaterialDeleted={loadFirstDayData}
+        />
+
         {/* Student Selector Switcher */}
         {profiles.length > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white border border-gray-200 rounded-2xl shadow-2xs">
@@ -580,6 +780,129 @@ export default function DashboardPage() {
           onGoalAdded={handleGoalAdded}
         />
       )}
+
+      {/* Teacher Profile Form */}
+      {showTeacherProfileForm && (
+        <TeacherProfileForm
+          profile={teacherProfile || emptyTeacherProfile()}
+          onClose={() => setShowTeacherProfileForm(false)}
+          onSaved={handleTeacherProfileSaved}
+        />
+      )}
+
+      {/* Classroom Profile Form */}
+      {showClassroomProfileForm && (
+        <ClassroomProfileForm
+          profile={classroomProfile || emptyClassroomProfile()}
+          onClose={() => setShowClassroomProfileForm(false)}
+          onSaved={handleClassroomProfileSaved}
+        />
+      )}
+
+      {/* Icebreaker Profile Form */}
+      {showIcebreakerProfileForm && (
+        <IcebreakerProfileForm
+          profile={icebreakerProfile || emptyIcebreakerProfile()}
+          onClose={() => setShowIcebreakerProfileForm(false)}
+          onSaved={handleIcebreakerProfileSaved}
+        />
+      )}
+
+      {/* Survey Profile Form (Getting-to-Know-You) */}
+      {showSurveyProfileForm && (
+        <SurveyProfileForm
+          profile={surveyProfile || emptySurveyProfile()}
+          onClose={() => setShowSurveyProfileForm(false)}
+          onSaved={handleSurveyProfileSaved}
+        />
+      )}
+
+      {/* First-Day Material Generator (shared by all five categories) */}
+      {generatorCategory === "teacher_intro" && teacherProfile && (
+        <FirstDayGeneratorModal
+          category="teacher_intro"
+          subject={teacherProfile}
+          onClose={() => setGeneratorCategory(null)}
+          onMaterialCreated={handleFirstDayMaterialCreated}
+        />
+      )}
+      {generatorCategory === "classroom_expectations" && classroomProfile && (
+        <FirstDayGeneratorModal
+          category="classroom_expectations"
+          subject={classroomProfile}
+          onClose={() => setGeneratorCategory(null)}
+          onMaterialCreated={handleFirstDayMaterialCreated}
+        />
+      )}
+      {generatorCategory === "icebreaker_activities" && icebreakerProfile && (
+        <FirstDayGeneratorModal
+          category="icebreaker_activities"
+          subject={icebreakerProfile}
+          onClose={() => setGeneratorCategory(null)}
+          onMaterialCreated={handleFirstDayMaterialCreated}
+        />
+      )}
+      {generatorCategory === "family_letter" && teacherProfile && (
+        <FirstDayGeneratorModal
+          category="family_letter"
+          subject={{ teacher: teacherProfile, classroom: classroomProfile }}
+          onClose={() => setGeneratorCategory(null)}
+          onMaterialCreated={handleFirstDayMaterialCreated}
+        />
+      )}
+      {generatorCategory === "getting_to_know_you" && surveyProfile && (
+        <FirstDayGeneratorModal
+          category="getting_to_know_you"
+          subject={surveyProfile}
+          onClose={() => setGeneratorCategory(null)}
+          onMaterialCreated={handleFirstDayMaterialCreated}
+        />
+      )}
+
+      {/* First-Day Material Viewer (shared by all five categories) */}
+      {viewingFirstDayMaterial && ((mat: FirstDayMaterial) => {
+        const parsed = safeParseContent(mat.contentJson);
+        const isViewable = mat.status === "ready" && parsed !== null;
+        return (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-4xl max-h-[95vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+              {!isViewable ? (
+                <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 text-center space-y-3 text-white">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-300 flex items-center justify-center mx-auto">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold">This material can&apos;t be opened</h3>
+                  <p className="text-sm text-slate-300">
+                    {mat.status === "generating"
+                      ? "This item is still generating, or generation was interrupted."
+                      : mat.status === "error"
+                      ? mat.error || "Generation failed for this item."
+                      : "Its saved content is missing or corrupted. Try deleting it and generating a new one."}
+                  </p>
+                  <button
+                    onClick={() => setViewingFirstDayMaterial(null)}
+                    className="mt-1 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {mat.format === "slide_deck" && (
+                    <SlideDeckViewer content={parsed} onClose={() => setViewingFirstDayMaterial(null)} />
+                  )}
+                  {mat.format === "video_clip" && (
+                    <VideoPlayer content={parsed} onClose={() => setViewingFirstDayMaterial(null)} />
+                  )}
+                  {mat.format === "html_page" && (
+                    <FirstDayWebpageViewer content={parsed} onClose={() => setViewingFirstDayMaterial(null)} />
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })(viewingFirstDayMaterial)}
 
       {/* Instructional Planning Assistant */}
       {showPlanning && selectedProfile && (
