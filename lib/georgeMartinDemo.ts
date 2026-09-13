@@ -1,9 +1,43 @@
 "use client";
 
 import db from "./db";
-import type { ProgressLogEntry, StudentIEPProfile, TeacherProfile } from "@/types/iep";
+import type { ProgressLogEntry, SchoolSchedulePeriod, StudentIEPProfile, TeacherProfile } from "@/types/iep";
 
 const createdAt = "2026-09-13T12:00:00.000Z";
+
+const periodTimes = [
+  "8:00–8:45 AM",
+  "8:50–9:35 AM",
+  "9:40–10:25 AM",
+  "10:30–11:15 AM",
+  "11:20 AM–12:05 PM",
+  "12:40–1:25 PM",
+  "1:30–2:15 PM",
+  "2:20–3:05 PM",
+];
+
+const demoTeachers = [
+  ["Ms. Elena Rivera", "elena.rivera@example.edu"],
+  ["Mr. Marcus Chen", "marcus.chen@example.edu"],
+  ["Dr. Priya Shah", "priya.shah@example.edu"],
+  ["Ms. Talia Brooks", "talia.brooks@example.edu"],
+  ["Mr. Owen Murphy", "owen.murphy@example.edu"],
+  ["Ms. Camille Foster", "camille.foster@example.edu"],
+  ["Coach Andre Lewis", "andre.lewis@example.edu"],
+  ["Ms. Naomi Patel", "naomi.patel@example.edu"],
+] as const;
+
+function makeDemoSchedule(subjects: string[], roomWing: string): SchoolSchedulePeriod[] {
+  return subjects.map((subjectName, index) => ({
+    period: index + 1,
+    subjectName,
+    teacherName: demoTeachers[index][0],
+    coTeacherName: index === 0 || index === 3 ? "Ms. Jordan Kim" : "",
+    time: periodTimes[index],
+    classroomLocation: index === 6 ? "North Gym" : `${roomWing}-${201 + index}`,
+    teacherContactInfo: demoTeachers[index][1],
+  }));
+}
 
 export const georgeMartinStudents: StudentIEPProfile[] = [
   {
@@ -22,6 +56,7 @@ export const georgeMartinStudents: StudentIEPProfile[] = [
       preferredModality: ["hands_on", "social", "visual"],
       additionalNotes: "Demo-only fictional student inspired by Jon Snow; not a real student record.",
     },
+    schoolSchedule: makeDemoSchedule(["English Language Arts", "Algebra I", "Earth Science", "U.S. History", "Learning Strategies", "Digital Media", "Physical Education", "Creative Writing"], "A"),
     goals: [{ id: "demo-got-jon-goal-reading", goalText: "Given a grade-level narrative passage, JS will cite two relevant details to support an inference with at least 80% accuracy across four consecutive probes.", category: "academic", baselineValue: 45, targetValue: 80, measurementUnit: "%", reviewDate: "2027-05-14", createdAt }],
     services: [{ id: "demo-got-jon-service", type: "specialized_instruction", mandatedMinutesPerWeek: 90, deliveredMinutesThisWeek: 0, entries: [] }],
     accommodations: [{ id: "demo-got-jon-accommodation", category: "instructional", text: "Graphic organizer for claim, evidence, and reasoning", active: true }],
@@ -44,6 +79,7 @@ export const georgeMartinStudents: StudentIEPProfile[] = [
       preferredModality: ["kinesthetic", "hands_on", "solitary"],
       additionalNotes: "Demo-only fictional student inspired by Arya Stark; not a real student record.",
     },
+    schoolSchedule: makeDemoSchedule(["English Language Arts", "Pre-Algebra", "Life Science", "World Geography", "Executive Skills Lab", "Theater Arts", "Physical Education", "Studio Art"], "B"),
     goals: [{ id: "demo-got-arya-goal-executive", goalText: "Given a multi-step assignment, AS will create and follow a task checklist, completing at least 4 of 5 steps independently in four of five opportunities.", category: "behavioral", baselineValue: 2, targetValue: 4, measurementUnit: "count", trialsDenominator: 5, reviewDate: "2027-04-23", createdAt }],
     services: [{ id: "demo-got-arya-service", type: "specialized_instruction", mandatedMinutesPerWeek: 60, deliveredMinutesThisWeek: 0, entries: [] }],
     accommodations: [{ id: "demo-got-arya-accommodation", category: "instructional", text: "Chunk long assignments into visible, checkable steps", active: true }],
@@ -66,6 +102,7 @@ export const georgeMartinStudents: StudentIEPProfile[] = [
       preferredModality: ["auditory", "visual", "social"],
       additionalNotes: "Demo-only fictional student inspired by Bran Stark; not a real student record.",
     },
+    schoolSchedule: makeDemoSchedule(["English Language Arts", "Math 6", "Integrated Science", "Ancient Civilizations", "Assistive Technology", "Digital Storytelling", "Adaptive Physical Education", "Library Research"], "C"),
     goals: [{ id: "demo-got-bran-goal-writing", goalText: "Using speech-to-text or keyboard access, BS will organize a narrative with a clear beginning, sequence of at least three events, and conclusion in four of five writing samples.", category: "academic", baselineValue: 2, targetValue: 4, measurementUnit: "count", trialsDenominator: 5, reviewDate: "2027-03-19", createdAt }],
     services: [{ id: "demo-got-bran-service", type: "occupational_therapy", mandatedMinutesPerWeek: 30, deliveredMinutesThisWeek: 0, entries: [] }],
     accommodations: [{ id: "demo-got-bran-accommodation", category: "environmental", text: "Accessible workspace with flexible positioning", active: true }, { id: "demo-got-bran-accommodation-2", category: "instructional", text: "Speech-to-text or keyboard response option", active: true }],
@@ -88,6 +125,7 @@ export const georgeMartinStudents: StudentIEPProfile[] = [
       preferredModality: ["reading_writing", "solitary", "auditory"],
       additionalNotes: "Demo-only fictional student inspired by Samwell Tarly; not a real student record.",
     },
+    schoolSchedule: makeDemoSchedule(["Honors English I", "Algebra I", "Biology", "World History", "Academic Seminar", "Research Methods", "Health & Wellness", "Creative Writing"], "D"),
     goals: [{ id: "demo-got-sam-goal-participation", goalText: "During a structured academic discussion, ST will share one prepared contribution and respond to one peer in four of five observed sessions.", category: "social_emotional", baselineValue: 1, targetValue: 4, measurementUnit: "count", trialsDenominator: 5, reviewDate: "2027-02-26", createdAt }],
     services: [{ id: "demo-got-sam-service", type: "counseling", mandatedMinutesPerWeek: 30, deliveredMinutesThisWeek: 0, entries: [] }],
     accommodations: [{ id: "demo-got-sam-accommodation", category: "instructional", text: "Preview discussion prompts and allow a prepared response", active: true }],
@@ -105,6 +143,28 @@ export const georgeMartinProgressLogs: ProgressLogEntry[] = georgeMartinStudents
     { id: `${student.id}-log-2`, profileId: student.id, goalId: goal.id, date: "2026-09-09", value: second, note: "Synthetic follow-up observation for development use.", createdAt: `2026-09-09T1${index}:00:00.000Z` },
   ];
 });
+
+/** Add schedules to demo students created by older app versions without replacing other record data. */
+export async function backfillGeorgeMartinDemoSchedules(): Promise<number> {
+  const schedulesById = new Map(
+    georgeMartinStudents.map((student) => [student.id, student.schoolSchedule])
+  );
+  let updated = 0;
+
+  await db.transaction("rw", db.profiles, async () => {
+    for (const [studentId, schedule] of schedulesById) {
+      const existing = await db.profiles.get(studentId);
+      if (!existing || existing.schoolSchedule?.length || !schedule) continue;
+      await db.profiles.update(studentId, {
+        schoolSchedule: structuredClone(schedule),
+        updatedAt: new Date().toISOString(),
+      });
+      updated += 1;
+    }
+  });
+
+  return updated;
+}
 
 export async function seedGeorgeMartinDemo(): Promise<void> {
   const existing = await db.teacherProfiles.get("current-teacher");

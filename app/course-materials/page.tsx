@@ -136,7 +136,7 @@ export default function CourseMaterialsPage() {
   return (
     <div className="min-h-screen bg-slate-50 pb-16 text-slate-900">
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-900 text-white shadow-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6">
+        <div className="mx-auto flex h-16 w-full items-center gap-4 px-4 sm:px-6 xl:px-8">
           <Link href="/" className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700">
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </Link>
@@ -156,7 +156,7 @@ export default function CourseMaterialsPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
+      <main className="mx-auto w-full space-y-6 px-4 py-6 sm:px-6 xl:px-8">
         <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-5 py-4">
           <h2 className="text-sm font-bold text-indigo-950">Prepare reusable classroom materials</h2>
           <p className="mt-1 text-xs leading-5 text-indigo-800">

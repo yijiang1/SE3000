@@ -13,7 +13,7 @@ import {
   unlockTeacherAccount,
 } from "../lib/teacherVault";
 import type { StudentIEPProfile } from "../types/iep";
-import { georgeMartinStudents, seedGeorgeMartinDemo } from "../lib/georgeMartinDemo";
+import { backfillGeorgeMartinDemoSchedules, georgeMartinStudents, seedGeorgeMartinDemo } from "../lib/georgeMartinDemo";
 
 class MemoryDirectory {
   readonly kind = "directory" as const;
@@ -115,11 +115,25 @@ test("the George R. R. Martin fixture creates four fictional students inside the
   assert.equal((await db.teacherProfiles.get("current-teacher"))?.name, "George R. R. Martin");
   assert.equal(await db.profiles.count(), georgeMartinStudents.length);
   assert.equal(await db.progressLogs.count(), georgeMartinStudents.length * 2);
+  assert.equal((await db.profiles.get("demo-got-jon-snow"))?.schoolSchedule?.length, 8);
   assert.equal((folder.files.get(teacher.vaultFilename) ?? "").includes("Jon Snow"), false);
 
   await lockTeacherAccount();
   await unlockTeacherAccount(teacher, "winter-is-coming-demo");
   assert.deepEqual((await db.profiles.orderBy("id").keys()).sort(), georgeMartinStudents.map((student) => student.id).sort());
+});
+
+test("existing George R. R. Martin demo students receive schedules without losing edits", async () => {
+  const legacyStudent = structuredClone(georgeMartinStudents[0]);
+  legacyStudent.schoolSchedule = undefined;
+  legacyStudent.plaafpSummary = "Teacher-edited summary";
+  await db.profiles.put(legacyStudent);
+
+  assert.equal(await backfillGeorgeMartinDemoSchedules(), 1);
+  const updated = await db.profiles.get(legacyStudent.id);
+  assert.equal(updated?.schoolSchedule?.length, 8);
+  assert.equal(updated?.plaafpSummary, "Teacher-edited summary");
+  assert.equal(await backfillGeorgeMartinDemoSchedules(), 0);
 });
 
 test("Brave-compatible accounts persist an encrypted vault without a directory picker", async () => {

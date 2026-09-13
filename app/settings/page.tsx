@@ -209,7 +209,7 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-16">
       <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 shadow-md">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-4">
+        <div className="mx-auto flex h-16 w-full items-center gap-4 px-4 sm:px-6 xl:px-8">
           <Link
             href="/"
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700"
@@ -235,7 +235,7 @@ export default function SettingsPage() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-8">
+      <main className="mx-auto w-full space-y-8 px-4 py-6 sm:px-6 xl:px-8">
         <section className="space-y-3">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-indigo-600" />

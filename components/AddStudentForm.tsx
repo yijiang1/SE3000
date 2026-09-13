@@ -3,11 +3,12 @@
 
 import Dialog from "@/components/Dialog";
 import { useState } from "react";
-import { X, UserPlus, Sparkles, BookOpen, Heart, Activity } from "lucide-react";
+import { X, UserPlus, Sparkles, BookOpen, CalendarClock } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import db from "@/lib/db";
 import type {
   StudentIEPProfile,
+  SchoolSchedulePeriod,
   CommunicationNeed,
   SensoryConsideration,
   LearningModality
@@ -50,8 +51,25 @@ const MODALITY_OPTIONS: { id: LearningModality; label: string }[] = [
   { id: "solitary", label: "Solitary / Independent" },
 ];
 
+function blankSchedule(): SchoolSchedulePeriod[] {
+  return Array.from({ length: 8 }, (_, index) => ({
+    period: index + 1,
+    subjectName: "",
+    teacherName: "",
+    coTeacherName: "",
+    time: "",
+    classroomLocation: "",
+    teacherContactInfo: "",
+  }));
+}
+
+function normalizeSchedule(schedule?: SchoolSchedulePeriod[]): SchoolSchedulePeriod[] {
+  const byPeriod = new Map(schedule?.map((item) => [item.period, item]));
+  return blankSchedule().map((empty) => ({ ...empty, ...byPeriod.get(empty.period), period: empty.period }));
+}
+
 export default function AddStudentForm({ onClose, onCreated, initialProfile }: Props) {
-  const [activeTab, setActiveTab] = useState<"general" | "learning">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "learning" | "schedule">("general");
 
   // General Fields
   const [initials, setInitials] = useState(initialProfile?.studentInitials ?? "");
@@ -68,12 +86,19 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
   const [interestsInput, setInterestsInput] = useState(initialProfile?.learningProfile?.interests.join(", ") ?? "");
   const [selectedModalities, setSelectedModalities] = useState<LearningModality[]>(initialProfile?.learningProfile?.preferredModality ?? []);
   const [additionalNotes, setAdditionalNotes] = useState(initialProfile?.learningProfile?.additionalNotes ?? "");
+  const [schoolSchedule, setSchoolSchedule] = useState<SchoolSchedulePeriod[]>(() => normalizeSchedule(initialProfile?.schoolSchedule));
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   function toggleArrayItem<T>(list: T[], item: T): T[] {
     return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
+  }
+
+  function updateSchedulePeriod(period: number, field: keyof Omit<SchoolSchedulePeriod, "period">, value: string) {
+    setSchoolSchedule((current) =>
+      current.map((item) => item.period === period ? { ...item, [field]: value } : item)
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -109,6 +134,15 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
         preferredModality: selectedModalities,
         additionalNotes: additionalNotes.trim() || undefined,
       },
+      schoolSchedule: schoolSchedule.map((item) => ({
+        ...item,
+        subjectName: item.subjectName.trim(),
+        teacherName: item.teacherName.trim(),
+        coTeacherName: item.coTeacherName.trim(),
+        time: item.time.trim(),
+        classroomLocation: item.classroomLocation.trim(),
+        teacherContactInfo: item.teacherContactInfo.trim(),
+      })),
       goals: [],
       services: [],
       accommodations: [],
@@ -153,12 +187,12 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
         </div>
 
         {/* Tab Selector */}
-        <div className="flex border-b border-gray-200 bg-gray-50 px-6 pt-2 gap-2 text-xs font-bold">
+        <div className="flex gap-2 overflow-x-auto border-b border-gray-200 bg-gray-50 px-6 pt-2 text-xs font-bold">
           <button
             type="button"
             onClick={() => setActiveTab("general")}
             className={clsx(
-              "px-4 py-2.5 rounded-t-xl border-b-2 transition-all flex items-center gap-1.5",
+              "flex shrink-0 items-center gap-1.5 rounded-t-xl border-b-2 px-4 py-2.5 transition-all",
               activeTab === "general"
                 ? "bg-white border-indigo-600 text-indigo-600 shadow-2xs"
                 : "border-transparent text-gray-500 hover:text-gray-900"
@@ -170,13 +204,25 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
             type="button"
             onClick={() => setActiveTab("learning")}
             className={clsx(
-              "px-4 py-2.5 rounded-t-xl border-b-2 transition-all flex items-center gap-1.5",
+              "flex shrink-0 items-center gap-1.5 rounded-t-xl border-b-2 px-4 py-2.5 transition-all",
               activeTab === "learning"
                 ? "bg-white border-indigo-600 text-indigo-600 shadow-2xs"
                 : "border-transparent text-gray-500 hover:text-gray-900"
             )}
           >
             <Sparkles className="w-4 h-4 text-purple-600" /> 2. AI Learning Profile
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("schedule")}
+            className={clsx(
+              "flex shrink-0 items-center gap-1.5 rounded-t-xl border-b-2 px-4 py-2.5 transition-all",
+              activeTab === "schedule"
+                ? "bg-white border-indigo-600 text-indigo-600 shadow-2xs"
+                : "border-transparent text-gray-500 hover:text-gray-900"
+            )}
+          >
+            <CalendarClock className="w-4 h-4" /> 3. School Schedule
           </button>
         </div>
 
@@ -271,7 +317,7 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
                 />
               </div>
             </div>
-          ) : (
+          ) : activeTab === "learning" ? (
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -394,6 +440,51 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
                 />
               </div>
             </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-black text-gray-900">Eight-period school schedule</h3>
+                <p className="mt-1 text-xs text-gray-500">
+                  Add the class and staff details used to coordinate support throughout the student&apos;s day.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {schoolSchedule.map((item) => (
+                  <fieldset key={item.period} className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
+                    <legend className="px-1 text-xs font-black uppercase tracking-wide text-indigo-700">
+                      Period {item.period}
+                    </legend>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-[11px] font-bold text-gray-600">Class subject name</label>
+                        <input value={item.subjectName} onChange={(e) => updateSchedulePeriod(item.period, "subjectName", e.target.value)} placeholder="e.g. English Language Arts" className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] font-bold text-gray-600">Class time</label>
+                        <input value={item.time} onChange={(e) => updateSchedulePeriod(item.period, "time", e.target.value)} placeholder="e.g. 8:00–8:45 AM" className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] font-bold text-gray-600">Teacher name</label>
+                        <input value={item.teacherName} onChange={(e) => updateSchedulePeriod(item.period, "teacherName", e.target.value)} placeholder="e.g. Ms. Rivera" className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] font-bold text-gray-600">Co-teacher name</label>
+                        <input value={item.coTeacherName} onChange={(e) => updateSchedulePeriod(item.period, "coTeacherName", e.target.value)} placeholder="Optional" className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] font-bold text-gray-600">Classroom location</label>
+                        <input value={item.classroomLocation} onChange={(e) => updateSchedulePeriod(item.period, "classroomLocation", e.target.value)} placeholder="e.g. Room 214" className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] font-bold text-gray-600">Teacher contact info</label>
+                        <input value={item.teacherContactInfo} onChange={(e) => updateSchedulePeriod(item.period, "teacherContactInfo", e.target.value)} placeholder="Email or phone extension" className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                      </div>
+                    </div>
+                  </fieldset>
+                ))}
+              </div>
+            </div>
           )}
 
           {error && <p className="text-xs text-red-500 font-semibold">{error}</p>}
@@ -416,10 +507,27 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
                 >
                   Next: Learning Profile →
                 </button>
+              ) : activeTab === "learning" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("general")}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs font-bold rounded-xl"
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("schedule")}
+                    className="px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-xs font-bold rounded-xl"
+                  >
+                    Next: School Schedule →
+                  </button>
+                </>
               ) : (
                 <button
                   type="button"
-                  onClick={() => setActiveTab("general")}
+                  onClick={() => setActiveTab("learning")}
                   className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs font-bold rounded-xl"
                 >
                   ← Back

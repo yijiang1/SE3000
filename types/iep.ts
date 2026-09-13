@@ -69,6 +69,17 @@ export interface LearningProfile {
   additionalNotes?: string;
 }
 
+// One class in a student's fixed eight-period school day.
+export interface SchoolSchedulePeriod {
+  period: number;
+  subjectName: string;
+  teacherName: string;
+  coTeacherName: string;
+  time: string;
+  classroomLocation: string;
+  teacherContactInfo: string;
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Progress log entry — one dated observation for a specific goal
 // ────────────────────────────────────────────────────────────────────────────
@@ -141,6 +152,7 @@ export interface StudentIEPProfile {
   iepAnnualReviewDate: string;   // ISO date
   plaafpSummary: string;         // PLAAFP narrative snippet
   learningProfile: LearningProfile; // Expanded learning profile
+  schoolSchedule?: SchoolSchedulePeriod[]; // Optional for profiles created before schedule tracking
   goals: IEPGoal[];
   services: ServiceDelivery[];
   accommodations: Accommodation[];

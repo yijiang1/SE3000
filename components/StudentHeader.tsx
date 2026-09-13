@@ -9,10 +9,12 @@ import {
   Heart,
   Sparkles,
   BookOpen,
-  Eye,
-  Activity,
-  Volume2,
-  ClipboardList
+  ClipboardList,
+  CalendarClock,
+  MapPin,
+  Mail,
+  LayoutGrid,
+  List
 } from "lucide-react";
 import type { StudentIEPProfile } from "@/types/iep";
 import { clsx } from "clsx";
@@ -47,6 +49,8 @@ export default function StudentHeader({
   onOpenPlanning
 }: Props) {
   const [showLearningProfile, setShowLearningProfile] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleLayout, setScheduleLayout] = useState<"row" | "list">("list");
 
   const reviewDate = new Date(profile.iepAnnualReviewDate + "T12:00:00");
   const today = new Date();
@@ -63,6 +67,20 @@ export default function StudentHeader({
   ];
   const avatarColor = avatarColors[initials.charCodeAt(0) % avatarColors.length];
   const lp = profile.learningProfile;
+  const schedule = profile.schoolSchedule ?? [];
+  const scheduleByPeriod = new Map(schedule.map((item) => [item.period, item]));
+  const scheduleSlots = Array.from({ length: 8 }, (_, index) => scheduleByPeriod.get(index + 1) ?? {
+    period: index + 1,
+    subjectName: "",
+    teacherName: "",
+    coTeacherName: "",
+    time: "",
+    classroomLocation: "",
+    teacherContactInfo: "",
+  });
+  const populatedSchedule = schedule.filter((item) =>
+    item.subjectName || item.teacherName || item.coTeacherName || item.time || item.classroomLocation || item.teacherContactInfo
+  );
 
   return (
     <div className="bg-white border border-gray-200 rounded-3xl shadow-sm p-6 space-y-4">
@@ -173,7 +191,86 @@ export default function StudentHeader({
           <ChevronRight className={clsx("w-3.5 h-3.5 transition-transform", showPlaafp && "rotate-90")} />
           <span>{showPlaafp ? "Hide PLAAFP" : "View PLAAFP Summary"}</span>
         </button>
+
+        <button
+          onClick={() => setShowSchedule(!showSchedule)}
+          className="flex items-center gap-1 text-xs font-bold text-violet-600 hover:text-violet-800"
+        >
+          <ChevronRight className={clsx("w-3.5 h-3.5 transition-transform", showSchedule && "rotate-90")} />
+          <span>{showSchedule ? "Hide School Schedule" : "View School Schedule"}</span>
+        </button>
       </div>
+
+      {showSchedule && (
+        <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4 animate-in fade-in duration-200">
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-violet-900">
+              <CalendarClock className="h-4 w-4 text-violet-600" />
+              <span>Eight-period school schedule</span>
+            </div>
+            <div className="inline-flex w-fit rounded-xl border border-violet-200 bg-white p-1" role="group" aria-label="Schedule layout">
+              <button
+                type="button"
+                onClick={() => setScheduleLayout("row")}
+                aria-pressed={scheduleLayout === "row"}
+                className={clsx(
+                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors",
+                  scheduleLayout === "row" ? "bg-violet-600 text-white" : "text-violet-700 hover:bg-violet-50"
+                )}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" /> 8-column row
+              </button>
+              <button
+                type="button"
+                onClick={() => setScheduleLayout("list")}
+                aria-pressed={scheduleLayout === "list"}
+                className={clsx(
+                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors",
+                  scheduleLayout === "list" ? "bg-violet-600 text-white" : "text-violet-700 hover:bg-violet-50"
+                )}
+              >
+                <List className="h-3.5 w-3.5" /> 8-row list
+              </button>
+            </div>
+          </div>
+          {populatedSchedule.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-violet-200 bg-white/70 p-4 text-center text-xs text-gray-500">
+              No classes have been added yet. Use Edit student profile to enter the schedule.
+            </p>
+          ) : (
+            <div className={clsx(scheduleLayout === "row" && "overflow-x-auto pb-2")}>
+              <div className={clsx(
+                "grid gap-2",
+                scheduleLayout === "row" ? "w-full min-w-[80rem] grid-cols-8" : "grid-cols-1"
+              )}>
+                {scheduleSlots.map((item) => (
+                  <div key={item.period} className="rounded-xl border border-violet-100 bg-white p-3 text-xs shadow-2xs">
+                    <div className={clsx("gap-3", scheduleLayout === "list" && "flex items-start justify-between")}>
+                      <div>
+                        <p className="font-black text-gray-900">Period {item.period}{item.subjectName ? ` · ${item.subjectName}` : ""}</p>
+                        <p className="mt-1 text-gray-600">
+                          {item.teacherName || "Teacher not specified"}
+                          {item.coTeacherName ? ` · Co-teacher: ${item.coTeacherName}` : ""}
+                        </p>
+                      </div>
+                      {item.time && <span className={clsx("rounded-lg bg-violet-100 px-2 py-1 font-bold text-violet-800", scheduleLayout === "row" ? "mt-2 inline-block" : "shrink-0")}>{item.time}</span>}
+                    </div>
+                    {(item.classroomLocation || item.teacherContactInfo) && (
+                      <div className={clsx(
+                        "mt-2 border-t border-gray-100 pt-2 text-[11px] text-gray-500",
+                        scheduleLayout === "list" ? "flex flex-wrap gap-x-4 gap-y-1" : "space-y-1"
+                      )}>
+                        {item.classroomLocation && <span className="flex items-center gap-1"><MapPin className="h-3 w-3 shrink-0" />{item.classroomLocation}</span>}
+                        {item.teacherContactInfo && <span className="flex items-center gap-1 break-all"><Mail className="h-3 w-3 shrink-0" />{item.teacherContactInfo}</span>}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Expanded Learning Profile Panel */}
       {showLearningProfile && lp && (

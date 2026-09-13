@@ -54,6 +54,7 @@ import MaterialErrorBoundary from "@/components/MaterialErrorBoundary";
 import WorksheetViewer from "@/components/materials/WorksheetViewer";
 import { useTeacherSession } from "@/components/TeacherAccess";
 import StudentManagementSection from "@/components/StudentManagementSection";
+import { backfillGeorgeMartinDemoSchedules } from "@/lib/georgeMartinDemo";
 
 /** Parse a stored material's contentJson, returning null instead of throwing. */
 function safeParseContent(json: string | undefined): any | null {
@@ -104,6 +105,12 @@ export default function DashboardPage() {
       if (purged > 0) console.info(`[SE 3000] Cleared ${purged} interrupted generation(s).`);
     } catch (err) {
       console.warn("[SE 3000] Stale material cleanup failed:", err);
+    }
+    try {
+      const updated = await backfillGeorgeMartinDemoSchedules();
+      if (updated > 0) console.info(`[SE 3000] Added schedules to ${updated} existing demo student(s).`);
+    } catch (err) {
+      console.warn("[SE 3000] Demo schedule backfill failed:", err);
     }
     const all = await db.profiles.toArray();
     setProfiles(all);
@@ -267,7 +274,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-16">
       {/* ─── Top Brand Header Bar ───────────────────────────────── */}
       <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 shadow-md">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+        <div className="mx-auto flex h-16 w-full items-center justify-between gap-4 px-4 sm:px-6 xl:px-8">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/30">
               <Sparkles className="w-5 h-5" />
@@ -343,7 +350,7 @@ export default function DashboardPage() {
       </header>
 
       {/* ─── Main Content Container ─────────────────────────────── */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <main className="mx-auto w-full space-y-6 px-4 py-6 sm:px-6 xl:px-8">
         <p className="my-3 rounded-lg bg-indigo-50 p-3 text-xs text-indigo-900">This teacher&apos;s records are encrypted and saved to <strong>{activeTeacher.storageMode === "browser" ? "this browser's secure local storage" : `${activeTeacher.folderName}/${activeTeacher.vaultFilename}`}</strong>. Generating or analyzing sends the supplied context to configured AI providers, trying the next provider if one fails. {activeTeacher.storageMode === "browser" ? "Do not clear Brave site data." : "Keep the vault file backed up."}</p>
         <StudentManagementSection
           profiles={profiles}
