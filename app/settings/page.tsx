@@ -12,7 +12,9 @@ import {
   XCircle,
   Trash2,
   BarChart3,
-  Sparkles
+  Sparkles,
+  Download,
+  Database
 } from "lucide-react";
 import {
   DEFAULT_TEXT_PROVIDER_ORDER,
@@ -32,6 +34,7 @@ import {
 import { getAppSettings, saveProviderPreferences } from "@/lib/settings";
 import { getUsageSummary, getUsageLogs, clearUsageLogs, type UsageSummary } from "@/lib/usage";
 import type { UsageLogEntry } from "@/types/iep";
+import { useTeacherSession } from "@/components/TeacherAccess";
 
 interface ConfigStatus {
   text: Record<TextProviderId, boolean>;
@@ -119,6 +122,7 @@ function ProviderOrderList<T extends string>({
 }
 
 export default function SettingsPage() {
+  const { teacher: activeTeacher, exportVault, deleteWorkspace } = useTeacherSession();
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<ConfigStatus | null>(null);
   const [prefs, setPrefs] = useState<ProviderPreferences>({});
@@ -156,6 +160,36 @@ export default function SettingsPage() {
     const [usageSummary, usageLogs] = await Promise.all([getUsageSummary(), getUsageLogs(25)]);
     setSummary(usageSummary);
     setLogs(usageLogs);
+  }
+
+  async function handleVaultExport() {
+    try {
+      const exported = await exportVault();
+      const url = URL.createObjectURL(new Blob([exported.data], { type: "application/json" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = exported.filename;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (cause) {
+      window.alert(cause instanceof Error ? cause.message : "The encrypted vault could not be exported.");
+    }
+  }
+
+  async function handleWorkspaceDelete() {
+    const typed = window.prompt(
+      `Permanently delete ${activeTeacher.name}'s workspace and all of its data? Type the teacher name to confirm.`
+    );
+    if (typed === null) return;
+    if (typed !== activeTeacher.name) {
+      window.alert("The teacher name did not match. Nothing was deleted.");
+      return;
+    }
+    try {
+      await deleteWorkspace();
+    } catch (cause) {
+      window.alert(cause instanceof Error ? cause.message : "The workspace could not be deleted.");
+    }
   }
 
   if (loading) {
@@ -362,6 +396,50 @@ export default function SettingsPage() {
               No generations logged yet — usage will appear here after you generate a material.
             </div>
           )}
+        </section>
+
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Database className="w-4 h-4 text-indigo-600" />
+            <h2 className="text-base font-bold text-gray-900">Workspace Data</h2>
+          </div>
+          <p className="text-xs text-gray-500 -mt-2">
+            Back up or permanently remove the encrypted workspace for <strong>{activeTeacher.name}</strong>.
+          </p>
+
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-2xs flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">Export encrypted vault</h3>
+              <p className="text-xs text-gray-500 mt-1 max-w-xl">
+                Download a portable, password-protected copy of all students, goals, progress, materials, and settings.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleVaultExport()}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-indigo-700"
+            >
+              <Download className="h-4 w-4" />
+              Export Vault
+            </button>
+          </div>
+
+          <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-rose-900">Delete workspace</h3>
+              <p className="text-xs text-rose-700 mt-1 max-w-xl">
+                Permanently delete this teacher workspace and all of its locally stored data. This cannot be undone.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleWorkspaceDelete()}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-rose-300 bg-white px-4 py-2.5 text-xs font-bold text-rose-700 hover:bg-rose-100"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete Workspace
+            </button>
+          </div>
         </section>
       </main>
     </div>
