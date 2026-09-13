@@ -2,9 +2,7 @@
 // app/settings/page.tsx — AI Provider Settings & Usage Tracking
 
 import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
 import {
-  ArrowLeft,
   Settings as SettingsIcon,
   ChevronUp,
   ChevronDown,
@@ -194,7 +192,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-slate-900 text-white">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-3 border-indigo-400 border-t-transparent rounded-full animate-spin" />
           <p className="text-sm font-semibold tracking-wide text-indigo-200">Loading Settings…</p>
@@ -208,34 +206,24 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-16">
-      <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 shadow-md">
-        <div className="mx-auto flex h-16 w-full items-center gap-4 px-4 sm:px-6 xl:px-8">
-          <Link
-            href="/"
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back
-          </Link>
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/30">
-              <SettingsIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="font-black text-lg tracking-tight text-white">AI Settings & Usage</span>
-              <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
-                Choose provider priority per capability and track generation cost
-              </p>
-            </div>
+      <main className="mx-auto w-full space-y-8 px-4 py-6 sm:px-6 xl:px-8">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/30">
+            <SettingsIcon className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="font-black text-lg tracking-tight text-slate-900">AI Settings & Usage</h1>
+            <p className="text-[11px] text-slate-500 font-medium">
+              Choose provider priority per capability and track generation cost
+            </p>
           </div>
           {saveNote && (
-            <span className="ml-auto text-xs font-bold text-emerald-400 flex items-center gap-1">
+            <span className="ml-auto text-xs font-bold text-emerald-600 flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5" /> {saveNote}
             </span>
           )}
         </div>
-      </header>
 
-      <main className="mx-auto w-full space-y-8 px-4 py-6 sm:px-6 xl:px-8">
         <section className="space-y-3">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-indigo-600" />

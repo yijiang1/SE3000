@@ -2,20 +2,7 @@
 // app/page.tsx — SE 3000 Special Education Materials & IEP Tracking Platform
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import Link from "next/link";
-import {
-  Sparkles,
-  Target,
-  FileText,
-  BookOpen,
-  Layers,
-  AlertTriangle,
-  ClipboardList,
-  Users,
-  Settings as SettingsIcon,
-  LockKeyhole,
-  HardDrive,
-} from "lucide-react";
+import { Target, AlertTriangle } from "lucide-react";
 import db from "@/lib/db";
 import { cleanupStaleMaterials, deleteMaterial } from "@/lib/materials";
 import { getPlanningSessionsForProfile } from "@/lib/planning";
@@ -68,7 +55,7 @@ function safeParseContent(json: string | undefined): any | null {
 }
 
 export default function DashboardPage() {
-  const { teacher: activeTeacher, saveStatus, lock } = useTeacherSession();
+  const { teacher: activeTeacher } = useTeacherSession();
   const [profiles, setProfiles] = useState<StudentIEPProfile[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [logs, setLogs] = useState<ProgressLogEntry[]>([]);
@@ -239,7 +226,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-slate-900 text-white">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-3 border-indigo-400 border-t-transparent rounded-full animate-spin" />
           <p className="text-sm font-semibold tracking-wide text-indigo-200">
@@ -252,7 +239,7 @@ export default function DashboardPage() {
 
   if (initError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white p-6">
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-slate-900 text-white p-6">
         <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-2xl p-6 text-center space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-300 flex items-center justify-center mx-auto">
             <AlertTriangle className="w-6 h-6" />
@@ -272,83 +259,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-16">
-      {/* ─── Top Brand Header Bar ───────────────────────────────── */}
-      <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 shadow-md">
-        <div className="mx-auto flex h-16 w-full items-center justify-between gap-4 px-4 sm:px-6 xl:px-8">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/30">
-              <Sparkles className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="hidden lg:flex items-center gap-2 px-3 py-2 text-xs text-slate-300">
-              <HardDrive className={`w-3.5 h-3.5 ${saveStatus === "error" ? "text-rose-400" : saveStatus === "saving" ? "text-amber-400" : "text-emerald-400"}`} />
-              <span className="max-w-32 truncate font-semibold">{activeTeacher.name}</span>
-              <span className="text-slate-500">·</span>
-              <span className={saveStatus === "error" ? "text-rose-300" : "text-slate-400"}>
-                {saveStatus === "saving" ? "Saving…" : saveStatus === "error" ? "Save failed" : "Vault saved"}
-              </span>
-            </div>
-            {selectedProfile && (
-              <>
-                <button
-                  onClick={handleStartPlanning}
-                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl shadow-md shadow-indigo-500/20 active:scale-95 transition-all"
-                >
-                  <ClipboardList className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Planning Assistant</span>
-                </button>
-
-                <button
-                  onClick={() => handleOpenGenerator()}
-                  className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                  <span className="hidden sm:inline">AI Materials Hub</span>
-                </button>
-
-              </>
-            )}
-
-            <Link
-              href="/course-materials"
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700"
-              title="Prepare general classroom materials"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-sky-400" />
-              <span className="hidden lg:inline">Course Materials</span>
-            </Link>
-
-            <button
-              onClick={() => document.getElementById("student-management-section")?.scrollIntoView({ behavior: "smooth" })}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700"
-            >
-              <Users className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">Students</span>
-            </button>
-
-            <Link
-              href="/settings"
-              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700"
-              title="AI Settings & Usage"
-            >
-              <SettingsIcon className="w-3.5 h-3.5 text-slate-400" />
-              <span className="hidden sm:inline">Settings</span>
-            </Link>
-
-            <button
-              onClick={() => void lock()}
-              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700"
-              title="Lock this teacher workspace"
-            >
-              <LockKeyhole className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Lock</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
       {/* ─── Main Content Container ─────────────────────────────── */}
       <main className="mx-auto w-full space-y-6 px-4 py-6 sm:px-6 xl:px-8">
         <p className="my-3 rounded-lg bg-indigo-50 p-3 text-xs text-indigo-900">This teacher&apos;s records are encrypted and saved to <strong>{activeTeacher.storageMode === "browser" ? "this browser's secure local storage" : `${activeTeacher.folderName}/${activeTeacher.vaultFilename}`}</strong>. Generating or analyzing sends the supplied context to configured AI providers, trying the next provider if one fails. {activeTeacher.storageMode === "browser" ? "Do not clear Brave site data." : "Keep the vault file backed up."}</p>
