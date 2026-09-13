@@ -592,6 +592,22 @@ export interface TeacherProfile {
   updatedAt: string;
 }
 
+// Account metadata kept in browser storage so the app can show the teacher
+// chooser. Records live in either a folder vault or a Brave browser vault.
+export interface TeacherAccount {
+  id: string;
+  name: string;
+  storageMode: "folder" | "browser";
+  folderName: string;
+  vaultFilename: string;
+  directoryHandle?: FileSystemDirectoryHandle;
+  passwordSalt: string;
+  verifierIv: string;
+  verifierCiphertext: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Teacher's own classroom rules, routines & expectations — used to generate
 // first-day "how our classroom works" materials.
 export interface ClassroomProfile {

@@ -17,10 +17,13 @@ import {
   Users,
   Mail,
   MessageCircleHeart,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  LockKeyhole,
+  HardDrive,
+  Download,
+  Trash2
 } from "lucide-react";
 import db from "@/lib/db";
-import { seedIfEmpty } from "@/lib/seed";
 import { cleanupStaleMaterials, deleteMaterial } from "@/lib/materials";
 import {
   getTeacherProfile,
@@ -82,6 +85,7 @@ import Dialog from "@/components/Dialog";
 import MaterialErrorBoundary from "@/components/MaterialErrorBoundary";
 import WorksheetViewer from "@/components/materials/WorksheetViewer";
 import FirstDayWebpageViewer from "@/components/materials/FirstDayWebpageViewer";
+import { useTeacherSession } from "@/components/TeacherAccess";
 
 /** Parse a stored material's contentJson, returning null instead of throwing. */
 function safeParseContent(json: string | undefined): any | null {
@@ -95,6 +99,7 @@ function safeParseContent(json: string | undefined): any | null {
 }
 
 export default function DashboardPage() {
+  const { teacher: activeTeacher, saveStatus, lock, exportVault, deleteWorkspace } = useTeacherSession();
   const [profiles, setProfiles] = useState<StudentIEPProfile[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [logs, setLogs] = useState<ProgressLogEntry[]>([]);
@@ -143,7 +148,6 @@ export default function DashboardPage() {
 
   // Load profiles from IndexedDB
   const loadProfiles = useCallback(async () => {
-    await seedIfEmpty();
     // Purge orphaned "generating" placeholders from interrupted sessions.
     // Non-fatal — never let it block the dashboard from loading.
     try {
@@ -323,6 +327,34 @@ export default function DashboardPage() {
     loadFirstDayData();
   }
 
+  async function handleVaultExport() {
+    try {
+      const exported = await exportVault();
+      const url = URL.createObjectURL(new Blob([exported.data], { type: "application/json" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = exported.filename;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (cause) {
+      window.alert(cause instanceof Error ? cause.message : "The encrypted vault could not be exported.");
+    }
+  }
+
+  async function handleWorkspaceDelete() {
+    const typed = window.prompt(`Permanently delete ${activeTeacher.name}'s workspace and all of its data? Type the teacher name to confirm.`);
+    if (typed === null) return;
+    if (typed !== activeTeacher.name) {
+      window.alert("The teacher name did not match. Nothing was deleted.");
+      return;
+    }
+    try {
+      await deleteWorkspace();
+    } catch (cause) {
+      window.alert(cause instanceof Error ? cause.message : "The workspace could not be deleted.");
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
@@ -379,6 +411,14 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="hidden lg:flex items-center gap-2 px-3 py-2 text-xs text-slate-300">
+              <HardDrive className={`w-3.5 h-3.5 ${saveStatus === "error" ? "text-rose-400" : saveStatus === "saving" ? "text-amber-400" : "text-emerald-400"}`} />
+              <span className="max-w-32 truncate font-semibold">{activeTeacher.name}</span>
+              <span className="text-slate-500">·</span>
+              <span className={saveStatus === "error" ? "text-rose-300" : "text-slate-400"}>
+                {saveStatus === "saving" ? "Saving…" : saveStatus === "error" ? "Save failed" : "Vault saved"}
+              </span>
+            </div>
             {selectedProfile && (
               <>
                 <button
@@ -429,13 +469,39 @@ export default function DashboardPage() {
               <SettingsIcon className="w-3.5 h-3.5 text-slate-400" />
               <span className="hidden sm:inline">Settings</span>
             </Link>
+
+            <button
+              onClick={() => void handleVaultExport()}
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700"
+              title="Download all teacher data as an encrypted portable vault"
+            >
+              <Download className="w-3.5 h-3.5 text-sky-400" />
+              <span className="hidden xl:inline">Export</span>
+            </button>
+
+            <button
+              onClick={() => void handleWorkspaceDelete()}
+              className="flex items-center gap-1.5 p-2 text-xs font-bold bg-slate-800 hover:bg-rose-950 text-slate-200 hover:text-rose-200 rounded-xl border border-slate-700 hover:border-rose-800"
+              title="Permanently delete this teacher workspace"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+            </button>
+
+            <button
+              onClick={() => void lock()}
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700"
+              title="Lock this teacher workspace"
+            >
+              <LockKeyhole className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Lock</span>
+            </button>
           </div>
         </div>
       </header>
 
       {/* ─── Main Content Container ─────────────────────────────── */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        <p className="my-3 rounded-lg bg-indigo-50 p-3 text-xs text-indigo-900">Records are stored in this browser. Generating or analyzing sends the supplied context to configured AI providers, trying the next provider if one fails. Without providers, server-based templates are used. Back up your records regularly.</p>
+        <p className="my-3 rounded-lg bg-indigo-50 p-3 text-xs text-indigo-900">This teacher&apos;s records are encrypted and saved to <strong>{activeTeacher.storageMode === "browser" ? "this browser's secure local storage" : `${activeTeacher.folderName}/${activeTeacher.vaultFilename}`}</strong>. Generating or analyzing sends the supplied context to configured AI providers, trying the next provider if one fails. {activeTeacher.storageMode === "browser" ? "Do not clear Brave site data." : "Keep the vault file backed up."}</p>
         {/* First-Day Materials Hub (not tied to any student) */}
         <FirstDayMaterialsGallery
           accent="amber"
