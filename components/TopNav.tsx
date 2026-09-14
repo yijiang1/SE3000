@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles, Users, BookOpen, Settings as SettingsIcon, LockKeyhole, HardDrive } from "lucide-react";
+import { Sparkles, Users, BookOpen, Columns3, Settings as SettingsIcon, LockKeyhole, HardDrive } from "lucide-react";
 import { clsx } from "clsx";
 import { useTeacherSession } from "@/components/TeacherAccess";
 
 const TABS = [
   { href: "/", label: "Students", icon: Users },
   { href: "/course-materials", label: "Materials", icon: BookOpen },
+  { href: "/compare", label: "Compare", icon: Columns3 },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ] as const;
 

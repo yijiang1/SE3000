@@ -2,10 +2,11 @@
 // components/AddStudentForm.tsx — Modal form to create a new student with expanded Learning Profile
 
 import Dialog from "@/components/Dialog";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, UserPlus, Sparkles, BookOpen, CalendarClock, ClipboardList, Compass } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import db from "@/lib/db";
+import { getClassPeriods, formatPeriodRange, DEFAULT_CLASS_PERIODS, type ClassPeriodDefinition } from "@/lib/settings";
 import type {
   StudentIEPProfile,
   SchoolSchedulePeriod,
@@ -54,21 +55,20 @@ const MODALITY_OPTIONS: { id: LearningModality; label: string }[] = [
   { id: "solitary", label: "Solitary / Independent" },
 ];
 
-function blankSchedule(): SchoolSchedulePeriod[] {
-  return Array.from({ length: 8 }, (_, index) => ({
+function blankSchedule(count: number): SchoolSchedulePeriod[] {
+  return Array.from({ length: count }, (_, index) => ({
     period: index + 1,
     subjectName: "",
     teacherName: "",
     coTeacherName: "",
-    time: "",
     classroomLocation: "",
     teacherContactInfo: "",
   }));
 }
 
-function normalizeSchedule(schedule?: SchoolSchedulePeriod[]): SchoolSchedulePeriod[] {
+function normalizeSchedule(schedule: SchoolSchedulePeriod[] | undefined, count: number): SchoolSchedulePeriod[] {
   const byPeriod = new Map(schedule?.map((item) => [item.period, item]));
-  return blankSchedule().map((empty) => ({ ...empty, ...byPeriod.get(empty.period), period: empty.period }));
+  return blankSchedule(count).map((empty) => ({ ...empty, ...byPeriod.get(empty.period), period: empty.period }));
 }
 
 const SUBJECT_AREAS = ["ELA / Reading", "Writing", "Math", "Science", "Social Studies", "Other"];
@@ -138,7 +138,17 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
   const [interestsInput, setInterestsInput] = useState(initialProfile?.learningProfile?.interests.join(", ") ?? "");
   const [selectedModalities, setSelectedModalities] = useState<LearningModality[]>(initialProfile?.learningProfile?.preferredModality ?? []);
   const [additionalNotes, setAdditionalNotes] = useState(initialProfile?.learningProfile?.additionalNotes ?? "");
-  const [schoolSchedule, setSchoolSchedule] = useState<SchoolSchedulePeriod[]>(() => normalizeSchedule(initialProfile?.schoolSchedule));
+  const [schoolSchedule, setSchoolSchedule] = useState<SchoolSchedulePeriod[]>(() =>
+    normalizeSchedule(initialProfile?.schoolSchedule, initialProfile?.schoolSchedule?.length || DEFAULT_CLASS_PERIODS.length)
+  );
+  const [classPeriods, setClassPeriods] = useState<ClassPeriodDefinition[]>(DEFAULT_CLASS_PERIODS);
+
+  useEffect(() => {
+    getClassPeriods().then((periods) => {
+      setClassPeriods(periods);
+      setSchoolSchedule((current) => normalizeSchedule(current, periods.length));
+    });
+  }, []);
 
   // Present-level narrative fields
   const [presentLevels, setPresentLevels] = useState({
@@ -214,7 +224,6 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
         subjectName: item.subjectName.trim(),
         teacherName: item.teacherName.trim(),
         coTeacherName: item.coTeacherName.trim(),
-        time: item.time.trim(),
         classroomLocation: item.classroomLocation.trim(),
         teacherContactInfo: item.teacherContactInfo.trim(),
       })),
@@ -566,9 +575,9 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
           ) : activeTab === "schedule" ? (
             <div className="space-y-4">
               <div>
-                <h3 className="text-sm font-black text-gray-900">Eight-period school schedule</h3>
+                <h3 className="text-sm font-black text-gray-900">School schedule</h3>
                 <p className="mt-1 text-xs text-gray-500">
-                  Add the class and staff details used to coordinate support throughout the student&apos;s day.
+                  Add the class and staff details used to coordinate support throughout the student&apos;s day. Periods and their times are shared across all students — add, remove, or edit them on the Settings page.
                 </p>
               </div>
 
@@ -577,15 +586,14 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
                   <fieldset key={item.period} className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
                     <legend className="px-1 text-xs font-black uppercase tracking-wide text-indigo-700">
                       Period {item.period}
+                      {formatPeriodRange(classPeriods[item.period - 1]) && (
+                        <span className="ml-1.5 font-bold normal-case text-gray-500">· {formatPeriodRange(classPeriods[item.period - 1])}</span>
+                      )}
                     </legend>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div>
                         <label className="mb-1 block text-[11px] font-bold text-gray-600">Class subject name</label>
                         <input value={item.subjectName} onChange={(e) => updateSchedulePeriod(item.period, "subjectName", e.target.value)} placeholder="e.g. English Language Arts" className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-[11px] font-bold text-gray-600">Class time</label>
-                        <input value={item.time} onChange={(e) => updateSchedulePeriod(item.period, "time", e.target.value)} placeholder="e.g. 8:00–8:45 AM" className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
                       </div>
                       <div>
                         <label className="mb-1 block text-[11px] font-bold text-gray-600">Teacher name</label>

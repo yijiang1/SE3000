@@ -12,7 +12,9 @@ import {
   BarChart3,
   Sparkles,
   Download,
-  Database
+  Database,
+  CalendarClock,
+  Plus
 } from "lucide-react";
 import {
   DEFAULT_TEXT_PROVIDER_ORDER,
@@ -29,7 +31,7 @@ import {
   type MusicProviderId,
   type ProviderPreferences
 } from "@/lib/ai/providers";
-import { getAppSettings, saveProviderPreferences } from "@/lib/settings";
+import { getAppSettings, saveProviderPreferences, saveClassPeriods, formatPeriodRange, DEFAULT_CLASS_PERIODS, type ClassPeriodDefinition } from "@/lib/settings";
 import { getUsageSummary, getUsageLogs, clearUsageLogs, type UsageSummary } from "@/lib/usage";
 import type { UsageLogEntry } from "@/types/iep";
 import { useTeacherSession } from "@/components/TeacherAccess";
@@ -124,6 +126,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<ConfigStatus | null>(null);
   const [prefs, setPrefs] = useState<ProviderPreferences>({});
+  const [classPeriods, setClassPeriods] = useState<ClassPeriodDefinition[]>(DEFAULT_CLASS_PERIODS);
   const [summary, setSummary] = useState<UsageSummary | null>(null);
   const [logs, setLogs] = useState<UsageLogEntry[]>([]);
   const [saveNote, setSaveNote] = useState<string | null>(null);
@@ -136,6 +139,7 @@ export default function SettingsPage() {
       getUsageLogs(25),
     ]);
     setPrefs(settings.providerPreferences);
+    setClassPeriods(settings.classPeriods?.length ? settings.classPeriods : DEFAULT_CLASS_PERIODS);
     setStatus(statusRes);
     setSummary(usageSummary);
     setLogs(usageLogs);
@@ -151,6 +155,26 @@ export default function SettingsPage() {
     await saveProviderPreferences(next);
     setSaveNote("Saved");
     setTimeout(() => setSaveNote(null), 1500);
+  }
+
+  function updatePeriodField(index: number, field: keyof ClassPeriodDefinition, value: string) {
+    setClassPeriods((current) => current.map((period, i) => (i === index ? { ...period, [field]: value } : period)));
+  }
+
+  async function persistClassPeriods(next: ClassPeriodDefinition[]) {
+    setClassPeriods(next);
+    await saveClassPeriods(next);
+    setSaveNote("Saved");
+    setTimeout(() => setSaveNote(null), 1500);
+  }
+
+  function addPeriod() {
+    void persistClassPeriods([...classPeriods, { startTime: "", endTime: "" }]);
+  }
+
+  function removePeriod(index: number) {
+    if (classPeriods.length <= 1) return;
+    void persistClassPeriods(classPeriods.filter((_, i) => i !== index));
   }
 
   async function handleClearUsage() {
@@ -268,6 +292,63 @@ export default function SettingsPage() {
               status={status?.music}
               onChange={(next) => updatePrefs({ ...prefs, music: next })}
             />
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <CalendarClock className="w-4 h-4 text-indigo-600" />
+            <h2 className="text-base font-bold text-gray-900">Class Period Schedule</h2>
+          </div>
+          <p className="text-xs text-gray-500 -mt-2">
+            Shared bell schedule for all students&apos; class periods — used on student schedules and the Compare page.
+          </p>
+
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-2xs space-y-2.5">
+            {classPeriods.map((period, index) => (
+              <div key={index} className="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-gray-50/70 p-3">
+                <div className="w-24 shrink-0">
+                  <div className="text-xs font-black uppercase tracking-wide text-indigo-700">Period {index + 1}</div>
+                  {formatPeriodRange(period) && <div className="mt-1 text-[11px] font-semibold text-gray-500">{formatPeriodRange(period)}</div>}
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-bold text-gray-600">Start time</label>
+                  <input
+                    type="time"
+                    value={period.startTime}
+                    onChange={(e) => updatePeriodField(index, "startTime", e.target.value)}
+                    onBlur={() => void persistClassPeriods(classPeriods)}
+                    className="rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-bold text-gray-600">End time</label>
+                  <input
+                    type="time"
+                    value={period.endTime}
+                    onChange={(e) => updatePeriodField(index, "endTime", e.target.value)}
+                    onBlur={() => void persistClassPeriods(classPeriods)}
+                    className="rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removePeriod(index)}
+                  disabled={classPeriods.length <= 1}
+                  title="Remove period"
+                  className="ml-auto p-2 rounded-lg border border-gray-300 text-gray-500 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addPeriod}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Period
+            </button>
           </div>
         </section>
 

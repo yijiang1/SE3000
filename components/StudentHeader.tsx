@@ -1,7 +1,7 @@
 "use client";
 // components/StudentHeader.tsx — Student overview banner with expanded Learning Profile
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   GraduationCap,
   CalendarDays,
@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { StudentIEPProfile } from "@/types/iep";
 import { clsx } from "clsx";
+import { getClassPeriods, formatPeriodRange, DEFAULT_CLASS_PERIODS, type ClassPeriodDefinition } from "@/lib/settings";
 
 interface Props {
   profile: StudentIEPProfile;
@@ -53,6 +54,11 @@ export default function StudentHeader({
   const [showSchedule, setShowSchedule] = useState(false);
   const [scheduleLayout, setScheduleLayout] = useState<"row" | "list">("list");
   const [showPresentLevels, setShowPresentLevels] = useState(false);
+  const [classPeriods, setClassPeriods] = useState<ClassPeriodDefinition[]>(DEFAULT_CLASS_PERIODS);
+
+  useEffect(() => {
+    getClassPeriods().then(setClassPeriods);
+  }, []);
 
   const reviewDate = new Date(profile.iepAnnualReviewDate + "T12:00:00");
   const today = new Date();
@@ -71,17 +77,17 @@ export default function StudentHeader({
   const lp = profile.learningProfile;
   const schedule = profile.schoolSchedule ?? [];
   const scheduleByPeriod = new Map(schedule.map((item) => [item.period, item]));
-  const scheduleSlots = Array.from({ length: 8 }, (_, index) => scheduleByPeriod.get(index + 1) ?? {
+  const slotCount = Math.max(classPeriods.length, schedule.length);
+  const scheduleSlots = Array.from({ length: slotCount }, (_, index) => scheduleByPeriod.get(index + 1) ?? {
     period: index + 1,
     subjectName: "",
     teacherName: "",
     coTeacherName: "",
-    time: "",
     classroomLocation: "",
     teacherContactInfo: "",
   });
   const populatedSchedule = schedule.filter((item) =>
-    item.subjectName || item.teacherName || item.coTeacherName || item.time || item.classroomLocation || item.teacherContactInfo
+    item.subjectName || item.teacherName || item.coTeacherName || item.classroomLocation || item.teacherContactInfo
   );
 
   const presentLevelNotes = [
@@ -256,7 +262,7 @@ export default function StudentHeader({
           <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-violet-900">
               <CalendarClock className="h-4 w-4 text-violet-600" />
-              <span>Eight-period school schedule</span>
+              <span>{slotCount}-period school schedule</span>
             </div>
             <div className="inline-flex w-fit rounded-xl border border-violet-200 bg-white p-1" role="group" aria-label="Schedule layout">
               <button
@@ -268,7 +274,7 @@ export default function StudentHeader({
                   scheduleLayout === "row" ? "bg-violet-600 text-white" : "text-violet-700 hover:bg-violet-50"
                 )}
               >
-                <LayoutGrid className="h-3.5 w-3.5" /> 8-column row
+                <LayoutGrid className="h-3.5 w-3.5" /> Row
               </button>
               <button
                 type="button"
@@ -279,7 +285,7 @@ export default function StudentHeader({
                   scheduleLayout === "list" ? "bg-violet-600 text-white" : "text-violet-700 hover:bg-violet-50"
                 )}
               >
-                <List className="h-3.5 w-3.5" /> 8-row list
+                <List className="h-3.5 w-3.5" /> List
               </button>
             </div>
           </div>
@@ -289,10 +295,10 @@ export default function StudentHeader({
             </p>
           ) : (
             <div className={clsx(scheduleLayout === "row" && "overflow-x-auto pb-2")}>
-              <div className={clsx(
-                "grid gap-2",
-                scheduleLayout === "row" ? "w-full min-w-[80rem] grid-cols-8" : "grid-cols-1"
-              )}>
+              <div
+                className={clsx("grid gap-2", scheduleLayout === "list" && "grid-cols-1")}
+                style={scheduleLayout === "row" ? { gridTemplateColumns: `repeat(${scheduleSlots.length}, minmax(9rem, 1fr))`, minWidth: `${scheduleSlots.length * 10}rem` } : undefined}
+              >
                 {scheduleSlots.map((item) => (
                   <div key={item.period} className="rounded-xl border border-violet-100 bg-white p-3 text-xs shadow-2xs">
                     <div className={clsx("gap-3", scheduleLayout === "list" && "flex items-start justify-between")}>
@@ -303,7 +309,7 @@ export default function StudentHeader({
                           {item.coTeacherName ? ` · Co-teacher: ${item.coTeacherName}` : ""}
                         </p>
                       </div>
-                      {item.time && <span className={clsx("rounded-lg bg-violet-100 px-2 py-1 font-bold text-violet-800", scheduleLayout === "row" ? "mt-2 inline-block" : "shrink-0")}>{item.time}</span>}
+                      {formatPeriodRange(classPeriods[item.period - 1]) && <span className={clsx("rounded-lg bg-violet-100 px-2 py-1 font-bold text-violet-800", scheduleLayout === "row" ? "mt-2 inline-block" : "shrink-0")}>{formatPeriodRange(classPeriods[item.period - 1])}</span>}
                     </div>
                     {(item.classroomLocation || item.teacherContactInfo) && (
                       <div className={clsx(

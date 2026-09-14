@@ -5,17 +5,6 @@ import type { ProgressLogEntry, SchoolSchedulePeriod, StudentIEPProfile, Teacher
 
 const createdAt = "2026-09-13T12:00:00.000Z";
 
-const periodTimes = [
-  "8:00–8:45 AM",
-  "8:50–9:35 AM",
-  "9:40–10:25 AM",
-  "10:30–11:15 AM",
-  "11:20 AM–12:05 PM",
-  "12:40–1:25 PM",
-  "1:30–2:15 PM",
-  "2:20–3:05 PM",
-];
-
 const demoTeachers = [
   ["Ms. Elena Rivera", "elena.rivera@example.edu"],
   ["Mr. Marcus Chen", "marcus.chen@example.edu"],
@@ -33,7 +22,6 @@ function makeDemoSchedule(subjects: string[], roomWing: string): SchoolScheduleP
     subjectName,
     teacherName: demoTeachers[index][0],
     coTeacherName: index === 0 || index === 3 ? "Ms. Jordan Kim" : "",
-    time: periodTimes[index],
     classroomLocation: index === 6 ? "North Gym" : `${roomWing}-${201 + index}`,
     teacherContactInfo: demoTeachers[index][1],
   }));

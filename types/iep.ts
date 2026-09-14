@@ -1,6 +1,7 @@
 // types/iep.ts — Comprehensive type definitions for SE 3000
 
 import type { ProviderPreferences } from "@/lib/ai/providers";
+import type { ClassPeriodDefinition } from "@/lib/settings";
 
 export type GoalCategory =
   | "academic"
@@ -69,13 +70,14 @@ export interface LearningProfile {
   additionalNotes?: string;
 }
 
-// One class in a student's fixed eight-period school day.
+// One class in a student's school day. `period` is the 1-based position in
+// the shared class-period schedule (AppSettings.classPeriods) — that's
+// where its time comes from, not this record.
 export interface SchoolSchedulePeriod {
   period: number;
   subjectName: string;
   teacherName: string;
   coTeacherName: string;
-  time: string;
   classroomLocation: string;
   teacherContactInfo: string;
 }
@@ -787,6 +789,7 @@ export interface PlanningSession {
 export interface AppSettings {
   id: "default" | "demo-initialized";
   providerPreferences: ProviderPreferences;
+  classPeriods?: ClassPeriodDefinition[]; // shared class-period schedule (start/end time per period), all students
   updatedAt: string;
 }
 
