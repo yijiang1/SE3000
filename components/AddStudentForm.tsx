@@ -3,7 +3,7 @@
 
 import Dialog from "@/components/Dialog";
 import { useState } from "react";
-import { X, UserPlus, Sparkles, BookOpen, CalendarClock } from "lucide-react";
+import { X, UserPlus, Sparkles, BookOpen, CalendarClock, ClipboardList, Compass } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import db from "@/lib/db";
 import type {
@@ -11,7 +11,10 @@ import type {
   SchoolSchedulePeriod,
   CommunicationNeed,
   SensoryConsideration,
-  LearningModality
+  LearningModality,
+  SubjectPerformance,
+  TransitionPlan,
+  CaseManagementNotes
 } from "@/types/iep";
 import { clsx } from "clsx";
 
@@ -68,14 +71,63 @@ function normalizeSchedule(schedule?: SchoolSchedulePeriod[]): SchoolSchedulePer
   return blankSchedule().map((empty) => ({ ...empty, ...byPeriod.get(empty.period), period: empty.period }));
 }
 
+const SUBJECT_AREAS = ["ELA / Reading", "Writing", "Math", "Science", "Social Studies", "Other"];
+
+function blankAcademicPerformance(): SubjectPerformance[] {
+  return SUBJECT_AREAS.map((subject) => ({ subject, currentGrade: "", strengths: "", needs: "", supportNeeded: "", notes: "" }));
+}
+
+function normalizeAcademicPerformance(rows?: SubjectPerformance[]): SubjectPerformance[] {
+  const bySubject = new Map(rows?.map((row) => [row.subject, row]));
+  return blankAcademicPerformance().map((empty) => ({ ...empty, ...bySubject.get(empty.subject) }));
+}
+
+// Trims every string field and collapses "" to undefined, for optional narrative fields.
+function trimmedOrUndefined<T extends object>(obj: T): T {
+  const entries = Object.entries(obj) as [string, string | undefined][];
+  return Object.fromEntries(entries.map(([key, value]) => [key, value?.trim() || undefined])) as T;
+}
+
+const PRESENT_LEVEL_FIELDS = [
+  { field: "strengths", label: "Strengths" },
+  { field: "mainAcademicNeeds", label: "Main Academic Needs" },
+  { field: "executiveFunctionNeeds", label: "Executive Function / Organization Needs" },
+  { field: "socialEmotionalFunctionalNeeds", label: "Communication / Social-Emotional / Functional Needs" },
+  { field: "currentGradesConcerns", label: "Current Grades / Academic Concerns" },
+  { field: "studentInput", label: "Student Input" },
+  { field: "parentInput", label: "Parent Input" },
+  { field: "teacherInput", label: "Teacher Input" },
+] as const;
+
+const TRANSITION_FIELDS = [
+  { field: "postSecondaryGoal", label: "Post-secondary Education / Training Goal" },
+  { field: "employmentGoal", label: "Employment Goal" },
+  { field: "independentLivingGoal", label: "Independent Living Goal (if applicable)" },
+  { field: "transitionActivities", label: "Transition Activities / Services" },
+  { field: "behaviorSupports", label: "BIP / Behavior Supports" },
+  { field: "safetyConsiderations", label: "Safety / Health Considerations" },
+] as const;
+
+const CASE_NOTE_FIELDS = [
+  { field: "upcomingMeetingDeadline", label: "Upcoming Meeting / Deadline" },
+  { field: "teacherDataNeeded", label: "Teacher Data Needed" },
+  { field: "parentContactNeeded", label: "Parent Contact Needed" },
+  { field: "missingInformation", label: "Missing / Incomplete Information" },
+  { field: "questionsForTeam", label: "Questions for Team" },
+  { field: "nextActionStep", label: "Next Action Step" },
+  { field: "studentSummary", label: "Student in One Sentence" },
+] as const;
+
 export default function AddStudentForm({ onClose, onCreated, initialProfile }: Props) {
-  const [activeTab, setActiveTab] = useState<"general" | "learning" | "schedule">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "learning" | "schedule" | "present" | "transition">("general");
 
   // General Fields
   const [initials, setInitials] = useState(initialProfile?.studentInitials ?? "");
   const [grade, setGrade] = useState(initialProfile?.grade ?? "");
   const [eligibility, setEligibility] = useState(initialProfile?.primaryEligibility ?? "");
   const [reviewDate, setReviewDate] = useState(initialProfile?.iepAnnualReviewDate ?? "");
+  const [reevaluationDate, setReevaluationDate] = useState(initialProfile?.reevaluationDate ?? "");
+  const [progressReportDate, setProgressReportDate] = useState(initialProfile?.progressReportDate ?? "");
   const [plaafp, setPlaafp] = useState(initialProfile?.plaafpSummary ?? "");
 
   // Learning Profile Fields
@@ -88,6 +140,21 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
   const [additionalNotes, setAdditionalNotes] = useState(initialProfile?.learningProfile?.additionalNotes ?? "");
   const [schoolSchedule, setSchoolSchedule] = useState<SchoolSchedulePeriod[]>(() => normalizeSchedule(initialProfile?.schoolSchedule));
 
+  // Present-level narrative fields
+  const [presentLevels, setPresentLevels] = useState({
+    strengths: initialProfile?.strengths ?? "",
+    mainAcademicNeeds: initialProfile?.mainAcademicNeeds ?? "",
+    executiveFunctionNeeds: initialProfile?.executiveFunctionNeeds ?? "",
+    socialEmotionalFunctionalNeeds: initialProfile?.socialEmotionalFunctionalNeeds ?? "",
+    currentGradesConcerns: initialProfile?.currentGradesConcerns ?? "",
+    studentInput: initialProfile?.studentInput ?? "",
+    parentInput: initialProfile?.parentInput ?? "",
+    teacherInput: initialProfile?.teacherInput ?? "",
+  });
+  const [academicPerformance, setAcademicPerformance] = useState<SubjectPerformance[]>(() => normalizeAcademicPerformance(initialProfile?.academicPerformance));
+  const [transitionPlan, setTransitionPlan] = useState<TransitionPlan>({ ...initialProfile?.transitionPlan });
+  const [caseNotes, setCaseNotes] = useState<CaseManagementNotes>({ ...initialProfile?.caseManagementNotes });
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -98,6 +165,12 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
   function updateSchedulePeriod(period: number, field: keyof Omit<SchoolSchedulePeriod, "period">, value: string) {
     setSchoolSchedule((current) =>
       current.map((item) => item.period === period ? { ...item, [field]: value } : item)
+    );
+  }
+
+  function updatePerformanceRow(subject: string, field: keyof Omit<SubjectPerformance, "subject">, value: string) {
+    setAcademicPerformance((current) =>
+      current.map((row) => row.subject === subject ? { ...row, [field]: value } : row)
     );
   }
 
@@ -124,6 +197,8 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
       grade,
       primaryEligibility: eligibility,
       iepAnnualReviewDate: reviewDate,
+      reevaluationDate: reevaluationDate || undefined,
+      progressReportDate: progressReportDate || undefined,
       plaafpSummary: plaafp || "No PLAAFP summary provided.",
       learningProfile: {
         readingLevel: readingLevel.trim(),
@@ -143,6 +218,10 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
         classroomLocation: item.classroomLocation.trim(),
         teacherContactInfo: item.teacherContactInfo.trim(),
       })),
+      ...trimmedOrUndefined(presentLevels),
+      academicPerformance,
+      transitionPlan: trimmedOrUndefined(transitionPlan),
+      caseManagementNotes: trimmedOrUndefined(caseNotes),
       goals: [],
       services: [],
       accommodations: [],
@@ -169,7 +248,7 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
 
   return (
     <Dialog onClose={onClose} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-slate-900 text-white">
           <div className="flex items-center gap-2.5">
@@ -187,12 +266,12 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
         </div>
 
         {/* Tab Selector */}
-        <div className="flex gap-2 overflow-x-auto border-b border-gray-200 bg-gray-50 px-6 pt-2 text-xs font-bold">
+        <div className="flex flex-wrap gap-1.5 border-b border-gray-200 bg-gray-50 px-6 pt-2 text-xs font-bold">
           <button
             type="button"
             onClick={() => setActiveTab("general")}
             className={clsx(
-              "flex shrink-0 items-center gap-1.5 rounded-t-xl border-b-2 px-4 py-2.5 transition-all",
+              "flex shrink-0 items-center gap-1.5 rounded-t-xl border-b-2 px-3.5 py-2.5 transition-all",
               activeTab === "general"
                 ? "bg-white border-indigo-600 text-indigo-600 shadow-2xs"
                 : "border-transparent text-gray-500 hover:text-gray-900"
@@ -204,7 +283,7 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
             type="button"
             onClick={() => setActiveTab("learning")}
             className={clsx(
-              "flex shrink-0 items-center gap-1.5 rounded-t-xl border-b-2 px-4 py-2.5 transition-all",
+              "flex shrink-0 items-center gap-1.5 rounded-t-xl border-b-2 px-3.5 py-2.5 transition-all",
               activeTab === "learning"
                 ? "bg-white border-indigo-600 text-indigo-600 shadow-2xs"
                 : "border-transparent text-gray-500 hover:text-gray-900"
@@ -216,13 +295,37 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
             type="button"
             onClick={() => setActiveTab("schedule")}
             className={clsx(
-              "flex shrink-0 items-center gap-1.5 rounded-t-xl border-b-2 px-4 py-2.5 transition-all",
+              "flex shrink-0 items-center gap-1.5 rounded-t-xl border-b-2 px-3.5 py-2.5 transition-all",
               activeTab === "schedule"
                 ? "bg-white border-indigo-600 text-indigo-600 shadow-2xs"
                 : "border-transparent text-gray-500 hover:text-gray-900"
             )}
           >
             <CalendarClock className="w-4 h-4" /> 3. School Schedule
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("present")}
+            className={clsx(
+              "flex shrink-0 items-center gap-1.5 rounded-t-xl border-b-2 px-3.5 py-2.5 transition-all",
+              activeTab === "present"
+                ? "bg-white border-indigo-600 text-indigo-600 shadow-2xs"
+                : "border-transparent text-gray-500 hover:text-gray-900"
+            )}
+          >
+            <ClipboardList className="w-4 h-4 text-emerald-600" /> 4. Present Levels
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("transition")}
+            className={clsx(
+              "flex shrink-0 items-center gap-1.5 rounded-t-xl border-b-2 px-3.5 py-2.5 transition-all",
+              activeTab === "transition"
+                ? "bg-white border-indigo-600 text-indigo-600 shadow-2xs"
+                : "border-transparent text-gray-500 hover:text-gray-900"
+            )}
+          >
+            <Compass className="w-4 h-4 text-rose-600" /> 5. Transition & Notes
           </button>
         </div>
 
@@ -293,17 +396,37 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  IEP Annual Review Date <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={reviewDate}
-                  onChange={(e) => setReviewDate(e.target.value)}
-                  required
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    IEP Annual Review Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={reviewDate}
+                    onChange={(e) => setReviewDate(e.target.value)}
+                    required
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Reevaluation Date</label>
+                  <input
+                    type="date"
+                    value={reevaluationDate}
+                    onChange={(e) => setReevaluationDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Progress Report Date</label>
+                  <input
+                    type="date"
+                    value={progressReportDate}
+                    onChange={(e) => setProgressReportDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  />
+                </div>
               </div>
 
               <div>
@@ -440,7 +563,7 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
                 />
               </div>
             </div>
-          ) : (
+          ) : activeTab === "schedule" ? (
             <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-black text-gray-900">Eight-period school schedule</h3>
@@ -485,6 +608,101 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
                 ))}
               </div>
             </div>
+          ) : activeTab === "present" ? (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-black text-gray-900">Present levels & academic performance</h3>
+                <p className="mt-1 text-xs text-gray-500">
+                  Narrative present-level details, used to inform the IEP and progress reporting.
+                </p>
+              </div>
+
+              {PRESENT_LEVEL_FIELDS.map(({ field, label }) => (
+                <div key={field}>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">{label}</label>
+                  <textarea
+                    value={presentLevels[field]}
+                    onChange={(e) => setPresentLevels((current) => ({ ...current, [field]: e.target.value }))}
+                    rows={2}
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+                  />
+                </div>
+              ))}
+
+              <div>
+                <h4 className="text-xs font-black text-gray-900 mb-2 pt-2 border-t border-gray-100">
+                  Current Academic Performance by Subject
+                </h4>
+                <div className="space-y-3">
+                  {academicPerformance.map((row) => (
+                    <fieldset key={row.subject} className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
+                      <legend className="px-1 text-xs font-black uppercase tracking-wide text-emerald-700">{row.subject}</legend>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-[11px] font-bold text-gray-600">Current grade</label>
+                          <input value={row.currentGrade} onChange={(e) => updatePerformanceRow(row.subject, "currentGrade", e.target.value)} className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[11px] font-bold text-gray-600">Support needed</label>
+                          <input value={row.supportNeeded} onChange={(e) => updatePerformanceRow(row.subject, "supportNeeded", e.target.value)} className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[11px] font-bold text-gray-600">Strengths</label>
+                          <input value={row.strengths} onChange={(e) => updatePerformanceRow(row.subject, "strengths", e.target.value)} className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[11px] font-bold text-gray-600">Needs / concerns</label>
+                          <input value={row.needs} onChange={(e) => updatePerformanceRow(row.subject, "needs", e.target.value)} className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="mb-1 block text-[11px] font-bold text-gray-600">Notes</label>
+                          <input value={row.notes} onChange={(e) => updatePerformanceRow(row.subject, "notes", e.target.value)} className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                        </div>
+                      </div>
+                    </fieldset>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-black text-gray-900">Transition, behavior & case management</h3>
+                <p className="mt-1 text-xs text-gray-500">
+                  Post-secondary planning, behavior/safety supports, and case-manager follow-up notes.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-xs font-black text-gray-900">Transition / Behavior / Safety</h4>
+                {TRANSITION_FIELDS.map(({ field, label }) => (
+                  <div key={field}>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{label}</label>
+                    <textarea
+                      value={transitionPlan[field] ?? ""}
+                      onChange={(e) => setTransitionPlan((current) => ({ ...current, [field]: e.target.value }))}
+                      rows={2}
+                      className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-3 pt-3 border-t border-gray-100">
+                <h4 className="text-xs font-black text-gray-900">Case Management Notes</h4>
+                {CASE_NOTE_FIELDS.map(({ field, label }) => (
+                  <div key={field}>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{label}</label>
+                    <textarea
+                      value={caseNotes[field] ?? ""}
+                      onChange={(e) => setCaseNotes((current) => ({ ...current, [field]: e.target.value }))}
+                      rows={field === "studentSummary" ? 1 : 2}
+                      className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {error && <p className="text-xs text-red-500 font-semibold">{error}</p>}
@@ -524,10 +742,44 @@ export default function AddStudentForm({ onClose, onCreated, initialProfile }: P
                     Next: School Schedule →
                   </button>
                 </>
+              ) : activeTab === "schedule" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("learning")}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs font-bold rounded-xl"
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("present")}
+                    className="px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-xs font-bold rounded-xl"
+                  >
+                    Next: Present Levels →
+                  </button>
+                </>
+              ) : activeTab === "present" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("schedule")}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs font-bold rounded-xl"
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("transition")}
+                    className="px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-xs font-bold rounded-xl"
+                  >
+                    Next: Transition & Notes →
+                  </button>
+                </>
               ) : (
                 <button
                   type="button"
-                  onClick={() => setActiveTab("learning")}
+                  onClick={() => setActiveTab("present")}
                   className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs font-bold rounded-xl"
                 >
                   ← Back

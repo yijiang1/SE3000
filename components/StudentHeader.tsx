@@ -14,7 +14,8 @@ import {
   MapPin,
   Mail,
   LayoutGrid,
-  List
+  List,
+  Compass
 } from "lucide-react";
 import type { StudentIEPProfile } from "@/types/iep";
 import { clsx } from "clsx";
@@ -51,6 +52,7 @@ export default function StudentHeader({
   const [showLearningProfile, setShowLearningProfile] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [scheduleLayout, setScheduleLayout] = useState<"row" | "list">("list");
+  const [showPresentLevels, setShowPresentLevels] = useState(false);
 
   const reviewDate = new Date(profile.iepAnnualReviewDate + "T12:00:00");
   const today = new Date();
@@ -81,6 +83,44 @@ export default function StudentHeader({
   const populatedSchedule = schedule.filter((item) =>
     item.subjectName || item.teacherName || item.coTeacherName || item.time || item.classroomLocation || item.teacherContactInfo
   );
+
+  const presentLevelNotes = [
+    { label: "Strengths", value: profile.strengths },
+    { label: "Main Academic Needs", value: profile.mainAcademicNeeds },
+    { label: "Executive Function / Organization Needs", value: profile.executiveFunctionNeeds },
+    { label: "Communication / Social-Emotional / Functional Needs", value: profile.socialEmotionalFunctionalNeeds },
+    { label: "Current Grades / Academic Concerns", value: profile.currentGradesConcerns },
+    { label: "Student Input", value: profile.studentInput },
+    { label: "Parent Input", value: profile.parentInput },
+    { label: "Teacher Input", value: profile.teacherInput },
+  ].filter((item): item is { label: string; value: string } => !!item.value);
+
+  const populatedPerformance = (profile.academicPerformance ?? []).filter(
+    (row) => row.currentGrade || row.strengths || row.needs || row.supportNeeded || row.notes
+  );
+
+  const transitionNotes = [
+    { label: "Post-secondary Education / Training Goal", value: profile.transitionPlan?.postSecondaryGoal },
+    { label: "Employment Goal", value: profile.transitionPlan?.employmentGoal },
+    { label: "Independent Living Goal", value: profile.transitionPlan?.independentLivingGoal },
+    { label: "Transition Activities / Services", value: profile.transitionPlan?.transitionActivities },
+    { label: "BIP / Behavior Supports", value: profile.transitionPlan?.behaviorSupports },
+    { label: "Safety / Health Considerations", value: profile.transitionPlan?.safetyConsiderations },
+  ].filter((item): item is { label: string; value: string } => !!item.value);
+
+  const caseNotes = [
+    { label: "Upcoming Meeting / Deadline", value: profile.caseManagementNotes?.upcomingMeetingDeadline },
+    { label: "Teacher Data Needed", value: profile.caseManagementNotes?.teacherDataNeeded },
+    { label: "Parent Contact Needed", value: profile.caseManagementNotes?.parentContactNeeded },
+    { label: "Missing / Incomplete Information", value: profile.caseManagementNotes?.missingInformation },
+    { label: "Questions for Team", value: profile.caseManagementNotes?.questionsForTeam },
+    { label: "Next Action Step", value: profile.caseManagementNotes?.nextActionStep },
+    { label: "Student in One Sentence", value: profile.caseManagementNotes?.studentSummary },
+  ].filter((item): item is { label: string; value: string } => !!item.value);
+
+  const hasPresentLevelInfo =
+    presentLevelNotes.length > 0 || populatedPerformance.length > 0 || transitionNotes.length > 0 || caseNotes.length > 0
+    || profile.reevaluationDate || profile.progressReportDate;
 
   return (
     <div className="bg-white border border-gray-200 rounded-3xl shadow-sm p-6 space-y-4">
@@ -199,6 +239,16 @@ export default function StudentHeader({
           <ChevronRight className={clsx("w-3.5 h-3.5 transition-transform", showSchedule && "rotate-90")} />
           <span>{showSchedule ? "Hide School Schedule" : "View School Schedule"}</span>
         </button>
+
+        {hasPresentLevelInfo && (
+          <button
+            onClick={() => setShowPresentLevels(!showPresentLevels)}
+            className="flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-800"
+          >
+            <ChevronRight className={clsx("w-3.5 h-3.5 transition-transform", showPresentLevels && "rotate-90")} />
+            <span>{showPresentLevels ? "Hide Present Levels & Case Notes" : "View Present Levels & Case Notes"}</span>
+          </button>
+        )}
       </div>
 
       {showSchedule && (
@@ -341,6 +391,83 @@ export default function StudentHeader({
         <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-gray-700 leading-relaxed animate-in fade-in duration-200">
           <strong className="block font-bold text-gray-900 mb-1">Present Levels of Performance (PLAAFP):</strong>
           {profile.plaafpSummary}
+        </div>
+      )}
+
+      {/* Expanded Present Levels, Academic Performance, Transition & Case Notes */}
+      {showPresentLevels && (
+        <div className="p-5 rounded-2xl bg-emerald-50/60 border border-emerald-100 space-y-4 animate-in fade-in duration-200">
+          {(profile.reevaluationDate || profile.progressReportDate) && (
+            <div className="flex flex-wrap gap-4 text-xs font-semibold text-gray-600">
+              {profile.reevaluationDate && <span><strong>Reevaluation:</strong> {profile.reevaluationDate}</span>}
+              {profile.progressReportDate && <span><strong>Progress Report:</strong> {profile.progressReportDate}</span>}
+            </div>
+          )}
+
+          {presentLevelNotes.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              {presentLevelNotes.map(({ label, value }) => (
+                <div key={label} className="bg-white/80 p-3 rounded-xl border border-emerald-100">
+                  <span className="font-bold text-gray-700 block mb-0.5">{label}</span>
+                  <p className="text-gray-600 whitespace-pre-wrap">{value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {populatedPerformance.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-emerald-900 mb-2">
+                <ClipboardList className="w-4 h-4 text-emerald-600" />
+                <span>Academic Performance by Subject</span>
+              </div>
+              <div className="space-y-2">
+                {populatedPerformance.map((row) => (
+                  <div key={row.subject} className="bg-white/80 p-3 rounded-xl border border-emerald-100 text-xs">
+                    <p className="font-bold text-gray-900">{row.subject}{row.currentGrade ? ` — ${row.currentGrade}` : ""}</p>
+                    {row.strengths && <p className="text-gray-600 mt-1"><strong>Strengths:</strong> {row.strengths}</p>}
+                    {row.needs && <p className="text-gray-600"><strong>Needs:</strong> {row.needs}</p>}
+                    {row.supportNeeded && <p className="text-gray-600"><strong>Support needed:</strong> {row.supportNeeded}</p>}
+                    {row.notes && <p className="text-gray-600"><strong>Notes:</strong> {row.notes}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {transitionNotes.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-rose-900 mb-2">
+                <Compass className="w-4 h-4 text-rose-600" />
+                <span>Transition / Behavior / Safety</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                {transitionNotes.map(({ label, value }) => (
+                  <div key={label} className="bg-white/80 p-3 rounded-xl border border-rose-100">
+                    <span className="font-bold text-gray-700 block mb-0.5">{label}</span>
+                    <p className="text-gray-600 whitespace-pre-wrap">{value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {caseNotes.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-gray-700 mb-2">
+                <ClipboardList className="w-4 h-4 text-gray-500" />
+                <span>Case Management Notes</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                {caseNotes.map(({ label, value }) => (
+                  <div key={label} className="bg-white/80 p-3 rounded-xl border border-gray-200">
+                    <span className="font-bold text-gray-700 block mb-0.5">{label}</span>
+                    <p className="text-gray-600 whitespace-pre-wrap">{value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

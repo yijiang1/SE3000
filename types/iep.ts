@@ -141,6 +141,38 @@ export interface Accommodation {
   active: boolean;
 }
 
+// One row of the Current Academic Performance table (per subject).
+export interface SubjectPerformance {
+  subject: string;
+  currentGrade: string;
+  strengths: string;
+  needs: string;
+  supportNeeded: string;
+  notes: string;
+}
+
+// Post-secondary transition planning, behavior & safety (IEP §7).
+export interface TransitionPlan {
+  postSecondaryGoal?: string;
+  employmentGoal?: string;
+  independentLivingGoal?: string;
+  transitionActivities?: string;
+  behaviorSupports?: string;        // BIP / behavior supports
+  safetyConsiderations?: string;
+}
+
+// Case-management follow-up notes (IEP §8) — not part of the formal IEP
+// document, just working notes for the case manager.
+export interface CaseManagementNotes {
+  upcomingMeetingDeadline?: string;
+  teacherDataNeeded?: string;
+  parentContactNeeded?: string;
+  missingInformation?: string;
+  questionsForTeam?: string;
+  nextActionStep?: string;
+  studentSummary?: string;          // "Student in one sentence"
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Student IEP Profile — root document stored in IndexedDB
 // ────────────────────────────────────────────────────────────────────────────
@@ -150,9 +182,26 @@ export interface StudentIEPProfile {
   grade: string;                 // e.g. "3rd"
   primaryEligibility: string;    // e.g. "SLD", "Autism", "OHI"
   iepAnnualReviewDate: string;   // ISO date
+  reevaluationDate?: string;     // ISO date
+  progressReportDate?: string;   // ISO date — next scheduled progress report
   plaafpSummary: string;         // PLAAFP narrative snippet
   learningProfile: LearningProfile; // Expanded learning profile
   schoolSchedule?: SchoolSchedulePeriod[]; // Optional for profiles created before schedule tracking
+
+  // Present-level narrative fields
+  strengths?: string;
+  mainAcademicNeeds?: string;
+  executiveFunctionNeeds?: string;
+  socialEmotionalFunctionalNeeds?: string;
+  currentGradesConcerns?: string;
+  studentInput?: string;
+  parentInput?: string;
+  teacherInput?: string;
+  academicPerformance?: SubjectPerformance[];
+
+  transitionPlan?: TransitionPlan;
+  caseManagementNotes?: CaseManagementNotes;
+
   goals: IEPGoal[];
   services: ServiceDelivery[];
   accommodations: Accommodation[];
