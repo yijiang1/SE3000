@@ -41,7 +41,7 @@ import MaterialErrorBoundary from "@/components/MaterialErrorBoundary";
 import WorksheetViewer from "@/components/materials/WorksheetViewer";
 import { useTeacherSession } from "@/components/TeacherAccess";
 import StudentManagementSection from "@/components/StudentManagementSection";
-import { backfillGeorgeMartinDemoSchedules } from "@/lib/georgeMartinDemo";
+import { backfillGeorgeMartinDemoSchedules, backfillGeorgeMartinNewStudents } from "@/lib/georgeMartinDemo";
 
 /** Parse a stored material's contentJson, returning null instead of throwing. */
 function safeParseContent(json: string | undefined): any | null {
@@ -98,6 +98,12 @@ export default function DashboardPage() {
       if (updated > 0) console.info(`[SE 3000] Added schedules to ${updated} existing demo student(s).`);
     } catch (err) {
       console.warn("[SE 3000] Demo schedule backfill failed:", err);
+    }
+    try {
+      const added = await backfillGeorgeMartinNewStudents();
+      if (added > 0) console.info(`[SE 3000] Added ${added} new demo student(s).`);
+    } catch (err) {
+      console.warn("[SE 3000] Demo student backfill failed:", err);
     }
     const all = await db.profiles.toArray();
     setProfiles(all);

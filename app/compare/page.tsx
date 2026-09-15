@@ -14,6 +14,7 @@ export default function ComparePage() {
   const [profiles, setProfiles] = useState<StudentIEPProfile[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [classPeriods, setClassPeriods] = useState<ClassPeriodDefinition[]>(DEFAULT_CLASS_PERIODS);
+  const [gradeFilter, setGradeFilter] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,6 +35,8 @@ export default function ComparePage() {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((existing) => existing !== id) : [...prev, id]));
   }
 
+  const grades = Array.from(new Set(profiles.map((p) => p.grade))).sort();
+  const visibleProfiles = gradeFilter ? profiles.filter((p) => p.grade === gradeFilter) : profiles;
   const selectedProfiles = profiles.filter((p) => selectedIds.includes(p.id));
 
   if (loading) {
@@ -62,21 +65,47 @@ export default function ComparePage() {
 
         {/* Student picker */}
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-center gap-3 border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-violet-50 px-5 py-4">
+          <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-gradient-to-r from-indigo-50 to-violet-50 px-5 py-4">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white">
               <Users className="h-4 w-4" />
             </div>
-            <div>
+            <div className="mr-auto">
               <h2 className="text-sm font-black text-slate-900">Select Students</h2>
               <p className="text-xs font-medium text-slate-500">{selectedIds.length} of {profiles.length} selected</p>
             </div>
+            <select
+              value={gradeFilter}
+              onChange={(e) => setGradeFilter(e.target.value)}
+              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:border-indigo-500 focus:outline-none"
+            >
+              <option value="">All grades</option>
+              {grades.map((grade) => (
+                <option key={grade} value={grade}>Grade {grade}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(visibleProfiles.map((p) => p.id))}
+              className="rounded-lg border border-indigo-200 bg-white px-2.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50"
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
+            >
+              None
+            </button>
           </div>
 
           {profiles.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-slate-500">No students yet. Add students from the Students tab first.</p>
+          ) : visibleProfiles.length === 0 ? (
+            <p className="px-5 py-8 text-center text-sm text-slate-500">No students match this filter.</p>
           ) : (
             <div className="grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-3">
-              {profiles.map((profile) => {
+              {visibleProfiles.map((profile) => {
                 const checked = selectedIds.includes(profile.id);
                 return (
                   <label

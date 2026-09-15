@@ -13,7 +13,7 @@ import {
   unlockTeacherAccount,
 } from "../lib/teacherVault";
 import type { StudentIEPProfile } from "../types/iep";
-import { backfillGeorgeMartinDemoSchedules, georgeMartinStudents, seedGeorgeMartinDemo } from "../lib/georgeMartinDemo";
+import { backfillGeorgeMartinDemoSchedules, backfillGeorgeMartinNewStudents, georgeMartinStudents, seedGeorgeMartinDemo } from "../lib/georgeMartinDemo";
 
 class MemoryDirectory {
   readonly kind = "directory" as const;
@@ -103,7 +103,7 @@ test("teachers sharing a parent folder still receive isolated vault files", asyn
   assert.equal(await db.profiles.get("two"), undefined);
 });
 
-test("the George R. R. Martin fixture creates four fictional students inside the vault", async () => {
+test("the George R. R. Martin fixture creates the fictional students inside the vault", async () => {
   const folder = new MemoryDirectory("Demo Records");
   const teacher = await createTeacherAccount(
     "George R. R. Martin",
@@ -134,6 +134,31 @@ test("existing George R. R. Martin demo students receive schedules without losin
   assert.equal(updated?.schoolSchedule?.length, 8);
   assert.equal(updated?.plaafpSummary, "Teacher-edited summary");
   assert.equal(await backfillGeorgeMartinDemoSchedules(), 0);
+});
+
+test("an existing George R. R. Martin vault receives newly added demo students", async () => {
+  const folder = new MemoryDirectory("Demo Records");
+  await createTeacherAccount("George R. R. Martin", "winter-is-coming-demo", folder as unknown as FileSystemDirectoryHandle, seedGeorgeMartinDemo);
+
+  const latestStudent = georgeMartinStudents[georgeMartinStudents.length - 1];
+  await db.profiles.delete(latestStudent.id);
+  await db.progressLogs.where("profileId").equals(latestStudent.id).delete();
+  assert.equal(await db.profiles.count(), georgeMartinStudents.length - 1);
+
+  assert.equal(await backfillGeorgeMartinNewStudents(), 1);
+  assert.equal(await db.profiles.count(), georgeMartinStudents.length);
+  assert.ok(await db.profiles.get(latestStudent.id));
+  assert.equal(await db.progressLogs.where("profileId").equals(latestStudent.id).count(), 2);
+  assert.equal(await backfillGeorgeMartinNewStudents(), 0);
+});
+
+test("backfillGeorgeMartinNewStudents never touches a non-demo teacher's vault", async () => {
+  const folder = new MemoryDirectory("Real Teacher");
+  await createTeacherAccount("Jordan Lee", "a-real-teacher-password", folder as unknown as FileSystemDirectoryHandle);
+  assert.equal(await db.profiles.count(), 0);
+
+  assert.equal(await backfillGeorgeMartinNewStudents(), 0);
+  assert.equal(await db.profiles.count(), 0);
 });
 
 test("Brave-compatible accounts persist an encrypted vault without a directory picker", async () => {

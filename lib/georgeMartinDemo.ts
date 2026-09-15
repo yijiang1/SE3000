@@ -120,6 +120,121 @@ export const georgeMartinStudents: StudentIEPProfile[] = [
     createdAt,
     updatedAt: createdAt,
   },
+  {
+    id: "demo-got-daenerys-targaryen",
+    studentInitials: "DT",
+    grade: "10th",
+    primaryEligibility: "Autism Spectrum Disorder (ASD)",
+    iepAnnualReviewDate: "2027-06-02",
+    plaafpSummary: "Fictional development record inspired by Daenerys Targaryen. DT is a confident public speaker and natural leader who does best with advance notice of schedule changes and clear expectations for group work.",
+    learningProfile: {
+      readingLevel: "10th grade",
+      comprehensionLevel: "Strong comprehension of persuasive and expository text; benefits from visual outlines for multi-step tasks",
+      communicationNeeds: ["verbal"],
+      sensoryConsiderations: ["calm_environment", "minimal_visual_clutter"],
+      interests: ["Leadership", "History", "Animals", "Public speaking"],
+      preferredModality: ["auditory", "social", "visual"],
+      additionalNotes: "Demo-only fictional student inspired by Daenerys Targaryen; not a real student record.",
+    },
+    schoolSchedule: makeDemoSchedule(["Honors English II", "Geometry", "Chemistry", "World Affairs", "Leadership Seminar", "Public Speaking", "Physical Education", "Studio Art"], "E"),
+    goals: [{ id: "demo-got-dany-goal-transitions", goalText: "Given advance notice of an upcoming schedule change, DT will transition to the new activity within 2 minutes without protest in four of five observed opportunities.", category: "behavioral", baselineValue: 2, targetValue: 4, measurementUnit: "count", trialsDenominator: 5, reviewDate: "2027-06-02", createdAt }],
+    services: [{ id: "demo-got-dany-service", type: "counseling", mandatedMinutesPerWeek: 30, deliveredMinutesThisWeek: 0, entries: [] }],
+    accommodations: [{ id: "demo-got-dany-accommodation", category: "instructional", text: "Advance written notice of schedule or routine changes", active: true }],
+    createdAt,
+    updatedAt: createdAt,
+  },
+  {
+    id: "demo-got-tyrion-lannister",
+    studentInitials: "TL",
+    grade: "9th",
+    primaryEligibility: "Other Health Impairment (OHI)",
+    iepAnnualReviewDate: "2027-01-15",
+    plaafpSummary: "Fictional development record inspired by Tyrion Lannister. TL has strong verbal reasoning and wit, and benefits from preferential seating and built-in movement breaks to manage fatigue.",
+    learningProfile: {
+      readingLevel: "11th grade",
+      comprehensionLevel: "Advanced inferential comprehension; strong verbal reasoning",
+      communicationNeeds: ["verbal"],
+      sensoryConsiderations: ["fidget_needs"],
+      interests: ["Strategy", "Debate", "History", "Books"],
+      preferredModality: ["reading_writing", "auditory", "solitary"],
+      additionalNotes: "Demo-only fictional student inspired by Tyrion Lannister; not a real student record.",
+    },
+    schoolSchedule: makeDemoSchedule(["Honors English I", "Algebra II", "Biology", "Debate", "Study Hall", "Political Science", "Health & Wellness", "Creative Writing"], "F"),
+    goals: [{ id: "demo-got-tyrion-goal-stamina", goalText: "Given a scheduled movement break every 20 minutes, TL will remain on-task for a full class period in four of five observed sessions.", category: "behavioral", baselineValue: 2, targetValue: 4, measurementUnit: "count", trialsDenominator: 5, reviewDate: "2027-01-15", createdAt }],
+    services: [{ id: "demo-got-tyrion-service", type: "occupational_therapy", mandatedMinutesPerWeek: 30, deliveredMinutesThisWeek: 0, entries: [] }],
+    accommodations: [{ id: "demo-got-tyrion-accommodation", category: "environmental", text: "Preferential seating near the front with room to stand as needed", active: true }],
+    createdAt,
+    updatedAt: createdAt,
+  },
+  {
+    id: "demo-got-sansa-stark",
+    studentInitials: "SS",
+    grade: "8th",
+    primaryEligibility: "Specific Learning Disability (SLD)",
+    iepAnnualReviewDate: "2027-07-08",
+    plaafpSummary: "Fictional development record inspired by Sansa Stark. SS shows strong organizational skills and diplomacy, and benefits from graphic organizers for multi-paragraph writing.",
+    learningProfile: {
+      readingLevel: "7th grade",
+      comprehensionLevel: "Solid literal comprehension; developing written organization for longer pieces",
+      communicationNeeds: ["verbal"],
+      sensoryConsiderations: ["calm_environment"],
+      interests: ["Fashion design", "Diplomacy", "Gardening", "History"],
+      preferredModality: ["visual", "social", "reading_writing"],
+      additionalNotes: "Demo-only fictional student inspired by Sansa Stark; not a real student record.",
+    },
+    schoolSchedule: makeDemoSchedule(["English Language Arts", "Pre-Algebra", "Life Science", "World Geography", "Learning Strategies", "Fashion & Design", "Physical Education", "Studio Art"], "G"),
+    goals: [{ id: "demo-got-sansa-goal-writing", goalText: "Using a graphic organizer, SS will draft a five-paragraph essay with a clear thesis and supporting evidence in four of five writing samples.", category: "academic", baselineValue: 2, targetValue: 4, measurementUnit: "count", trialsDenominator: 5, reviewDate: "2027-07-08", createdAt }],
+    services: [{ id: "demo-got-sansa-service", type: "specialized_instruction", mandatedMinutesPerWeek: 60, deliveredMinutesThisWeek: 0, entries: [] }],
+    accommodations: [{ id: "demo-got-sansa-accommodation", category: "instructional", text: "Graphic organizer for multi-paragraph writing", active: true }],
+    createdAt,
+    updatedAt: createdAt,
+  },
+  {
+    id: "demo-got-brienne-of-tarth",
+    studentInitials: "BT",
+    grade: "7th",
+    primaryEligibility: "Speech or Language Impairment",
+    iepAnnualReviewDate: "2026-12-10",
+    plaafpSummary: "Fictional development record inspired by Brienne of Tarth. BT is dependable and hardworking, and benefits from rehearsal time before speaking in front of the class.",
+    learningProfile: {
+      readingLevel: "7th grade",
+      comprehensionLevel: "Strong literal comprehension; developing expressive verbal fluency",
+      communicationNeeds: ["verbal", "visual_supports"],
+      sensoryConsiderations: ["movement_seeking"],
+      interests: ["Sports", "Training", "Honor codes", "History"],
+      preferredModality: ["kinesthetic", "hands_on", "solitary"],
+      additionalNotes: "Demo-only fictional student inspired by Brienne of Tarth; not a real student record.",
+    },
+    schoolSchedule: makeDemoSchedule(["English Language Arts", "Pre-Algebra", "Life Science", "World Geography", "Speech Support", "Athletics", "Physical Education", "Studio Art"], "H"),
+    goals: [{ id: "demo-got-brienne-goal-speaking", goalText: "Given one minute of silent rehearsal time, BT will deliver a prepared response to a class discussion prompt with at least 80% intelligibility in four of five observed opportunities.", category: "communication", baselineValue: 50, targetValue: 80, measurementUnit: "%", reviewDate: "2026-12-10", createdAt }],
+    services: [{ id: "demo-got-brienne-service", type: "speech_language", mandatedMinutesPerWeek: 60, deliveredMinutesThisWeek: 0, entries: [] }],
+    accommodations: [{ id: "demo-got-brienne-accommodation", category: "instructional", text: "Rehearsal time before verbal responses", active: true }],
+    createdAt,
+    updatedAt: createdAt,
+  },
+  {
+    id: "demo-got-theon-greyjoy",
+    studentInitials: "TG",
+    grade: "6th",
+    primaryEligibility: "Emotional/Behavioral Disorder (EBD)",
+    iepAnnualReviewDate: "2027-08-21",
+    plaafpSummary: "Fictional development record inspired by Theon Greyjoy. TG is working on building self-confidence and benefits from a consistent check-in routine and positive reinforcement for participation.",
+    learningProfile: {
+      readingLevel: "6th grade",
+      comprehensionLevel: "Developing literal comprehension; benefits from chunked reading passages",
+      communicationNeeds: ["verbal"],
+      sensoryConsiderations: ["calm_environment", "fidget_needs"],
+      interests: ["Sailing", "Strategy games", "Survival skills", "Animals"],
+      preferredModality: ["kinesthetic", "visual", "hands_on"],
+      additionalNotes: "Demo-only fictional student inspired by Theon Greyjoy; not a real student record.",
+    },
+    schoolSchedule: makeDemoSchedule(["English Language Arts", "Math 6", "Integrated Science", "Ancient Civilizations", "Check-In Support", "Outdoor Education", "Adaptive Physical Education", "Library Research"], "I"),
+    goals: [{ id: "demo-got-theon-goal-participation", goalText: "During a daily morning check-in, TG will identify one personal goal for the day and report back on progress in four of five school days.", category: "social_emotional", baselineValue: 2, targetValue: 4, measurementUnit: "count", trialsDenominator: 5, reviewDate: "2027-08-21", createdAt }],
+    services: [{ id: "demo-got-theon-service", type: "counseling", mandatedMinutesPerWeek: 30, deliveredMinutesThisWeek: 0, entries: [] }],
+    accommodations: [{ id: "demo-got-theon-accommodation", category: "instructional", text: "Daily check-in and check-out routine with positive reinforcement", active: true }],
+    createdAt,
+    updatedAt: createdAt,
+  },
 ];
 
 export const georgeMartinProgressLogs: ProgressLogEntry[] = georgeMartinStudents.flatMap((student, index) => {
@@ -152,6 +267,25 @@ export async function backfillGeorgeMartinDemoSchedules(): Promise<number> {
   });
 
   return updated;
+}
+
+/** Add demo students introduced by newer app versions to an existing George Martin vault. */
+export async function backfillGeorgeMartinNewStudents(): Promise<number> {
+  const teacher = await db.teacherProfiles.get("current-teacher");
+  if (teacher?.name !== "George R. R. Martin") return 0;
+
+  let added = 0;
+  await db.transaction("rw", db.profiles, db.progressLogs, async () => {
+    for (const student of georgeMartinStudents) {
+      if (await db.profiles.get(student.id)) continue;
+      await db.profiles.put(structuredClone(student));
+      const logs = georgeMartinProgressLogs.filter((log) => log.profileId === student.id);
+      await db.progressLogs.bulkPut(structuredClone(logs));
+      added += 1;
+    }
+  });
+
+  return added;
 }
 
 export async function seedGeorgeMartinDemo(): Promise<void> {
