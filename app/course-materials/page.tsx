@@ -30,6 +30,7 @@ import IcebreakerProfileForm from "@/components/IcebreakerProfileForm";
 import SurveyProfileForm from "@/components/SurveyProfileForm";
 import FirstDayGeneratorModal from "@/components/FirstDayGeneratorModal";
 import CompareResultsModal from "@/components/CompareResultsModal";
+import LearningResources from "@/components/LearningResources";
 import Dialog from "@/components/Dialog";
 import MaterialErrorBoundary from "@/components/MaterialErrorBoundary";
 import SlideDeckViewer from "@/components/materials/SlideDeckViewer";
@@ -153,6 +154,8 @@ export default function CourseMaterialsPage() {
         </div>
 
         {loadError && <p className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-700">{loadError}</p>}
+
+        <LearningResources />
 
         <FirstDayMaterialsGallery
           accent="amber"

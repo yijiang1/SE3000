@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asymptote Lab — Rational Functions</title>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--blue:#2563eb;--red:#dc2626;--green:#16a34a;--purple:#7c3aed;--orange:#ea580c;--r:14px}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:linear-gradient(135deg,#1e3a8a,#7c3aed);color:#fff;padding:22px 16px 16px}
+header h1{margin:0;font-size:1.6rem}
+header p{margin:.3rem 0 0;opacity:.92}
+nav{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:6px;overflow-x:auto;padding:8px 10px;-webkit-overflow-scrolling:touch}
+nav button{flex:0 0 auto;border:1px solid var(--line);background:#f9fafb;border-radius:999px;padding:7px 14px;font:inherit;font-size:.92rem;cursor:pointer;color:var(--ink)}
+nav button.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+main{max-width:900px;margin:0 auto;padding:14px 12px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin:0 0 14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.card h2{margin:0 0 6px;font-size:1.3rem}
+.card h3{margin:0 0 8px;font-size:1.05rem}
+.muted{color:var(--muted)}
+.big{font-size:1.25rem}
+.callout{background:#eff6ff;border-left:4px solid var(--blue);padding:10px 12px;border-radius:8px;margin:10px 0}
+.warn{background:#fff7ed;border-left:4px solid var(--orange);padding:10px 12px;border-radius:8px;margin:10px 0}
+.good{background:#f0fdf4;border-left:4px solid var(--green);padding:10px 12px;border-radius:8px;margin:10px 0}
+.bad{background:#fef2f2;border-left:4px solid var(--red);padding:10px 12px;border-radius:8px;margin:10px 0}
+code{background:#f3f4f6;padding:1px 6px;border-radius:5px;font-size:.92em}
+.frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 .3em}
+.frac>span:first-child{border-bottom:2px solid currentColor;padding:0 .35em .1em}
+.frac>span:last-child{padding:.1em .35em 0}
+.badge{display:inline-block;padding:1px 9px;border-radius:999px;font-size:.85rem;font-weight:600;color:#fff;white-space:nowrap}
+.b-va{background:var(--red)}.b-ha{background:var(--green)}.b-sl{background:var(--purple)}.b-hole{background:var(--orange)}.b-int{background:#475569}
+/* picker */
+.picker label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:8px}
+.picker select,.picker input{width:100%;font:inherit;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;margin-top:3px}
+.pk-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pk-show{font-size:1.3rem;margin:6px 0;text-align:center;min-height:2.8em}
+.pk-err{color:var(--red);font-size:.9rem;min-height:1.2em}
+@media(max-width:520px){.pk-row{grid-template-columns:1fr}}
+/* plot */
+.plotwrap canvas{display:block;width:100%;border:1px solid var(--line);border-radius:10px;background:#fff;touch-action:pan-y;cursor:crosshair}
+.plotbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:.8rem;color:var(--muted)}
+.plotbar button{border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:3px 10px;cursor:pointer;font:inherit}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.85rem;margin-top:8px}
+.legend i{display:inline-block;width:22px;height:0;border-top:3px dashed;vertical-align:middle;margin-right:5px}
+.legend i.solid{border-top-style:solid}
+.legend i.circ{width:11px;height:11px;border:3px solid var(--orange);border-radius:50%;background:#fff;vertical-align:middle}
+.toggles{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.9rem;margin:8px 0}
+.toggles label{cursor:pointer}
+/* buttons */
+.btn{font:inherit;border:0;background:var(--blue);color:#fff;padding:8px 16px;border-radius:10px;cursor:pointer;font-weight:600}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid #cbd5e1;font-weight:500}
+.btn.green{background:var(--green)}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.navbtns{display:flex;justify-content:space-between;gap:8px;margin-top:6px}
+.chip{border:1px solid #cbd5e1;background:#fff;border-radius:999px;padding:5px 13px;cursor:pointer;font:inherit;font-size:.9rem}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+/* steps */
+.step{display:flex;gap:12px;padding:10px 0;border-bottom:1px dashed var(--line);animation:pop .3s}
+.step:last-child{border-bottom:0}
+.step .num{flex:0 0 30px;height:30px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+input[type=range]{width:100%}
+.zgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.zgrid>div{background:#f9fafb;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+.zgrid .val{font-size:1.35rem;font-weight:700}
+table.t{border-collapse:collapse;width:100%;font-size:.92rem;margin-top:8px}
+table.t th,table.t td{border:1px solid var(--line);padding:5px 8px;text-align:right}
+table.t th{background:#f3f4f6}
+/* duel */
+.duel{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;text-align:center;margin:8px 0}
+.duel .side{background:#f9fafb;border:1px solid var(--line);border-radius:12px;padding:10px}
+.duel .deg{font-size:1.5rem;font-weight:700}
+.cases{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.case{border:2px solid var(--line);border-radius:12px;padding:9px;font-size:.9rem;opacity:.55;transition:.2s}
+.case.on{opacity:1;border-color:var(--green);background:#f0fdf4;transform:scale(1.02)}
+.case b{display:block;margin-bottom:3px}
+@media(max-width:560px){.cases{grid-template-columns:1fr}.zgrid{grid-template-columns:1fr}}
+/* synthetic grid */
+.sg{display:grid;gap:0;justify-content:start;font-size:1.2rem;margin:12px 0;font-family:ui-monospace,Menlo,Consolas,monospace}
+.sg-lab{font-size:.72rem;color:var(--muted);text-align:center;padding-bottom:2px;font-family:system-ui}
+.sg-cell,.sg-c{min-width:50px;height:42px;display:flex;align-items:center;justify-content:center}
+.sg-c{border:2px solid var(--purple);border-radius:8px;font-weight:700;color:var(--purple);margin-right:8px}
+.sg-cell.top{border-bottom:0}
+.sg-cell.sum{border-top:2px solid var(--ink);font-weight:700}
+.sg-cell.rem{background:#fef3c7;border-radius:0 0 8px 0}
+.sg-cell.ghost{opacity:0}
+.sg-cell.hl{background:#dbeafe;border-radius:8px;outline:2px solid var(--blue)}
+.sg-cell.sum.hl{background:#dcfce7;outline-color:var(--green)}
+.sg-cell.top.hl{background:#dbeafe}
+.sg-cell.dim{color:#cbd5e1}
+.say{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;min-height:3.4em}
+.ans-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.ans-row input{flex:1 1 200px;font:inherit;padding:9px 11px;border:2px solid #cbd5e1;border-radius:10px}
+.ans-row input:focus{outline:none;border-color:var(--blue)}
+.ans-row label{min-width:3.2em;font-weight:600}
+.score{font-weight:600}
+.cheat{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.cheat>div{border-radius:12px;padding:10px;color:#fff}
+@media(max-width:700px){.cheat{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>📉 Asymptote Lab</h1>
+  <p>Play with rational functions, see asymptotes appear, and practice until it clicks.</p>
+</header>
+<nav id="nav">
+  <button data-tab="explore">1 · Explore</button>
+  <button data-tab="vertical">2 · Vertical</button>
+  <button data-tab="horizontal">3 · Horizontal</button>
+  <button data-tab="slant">4 · Slant</button>
+  <button data-tab="synth">5 · Synthetic Division</button>
+  <button data-tab="practice">6 · Practice</button>
+</nav>
+<main>
+
+<!-- ============ EXPLORE ============ -->
+<section id="tab-explore" class="tab">
+  <div class="card">
+    <h2>What is a rational function?</h2>
+    <p>It's just a <b>fraction made of polynomials</b>:
+      <span class="frac"><span>P(x)</span><span>Q(x)</span></span>
+      where the bottom <b>Q(x)</b> is not the zero polynomial. You can plug in any <i>x</i> that doesn't make the bottom equal 0.</p>
+    <p>An <b>asymptote</b> is a line that the graph gets closer and closer to, without (usually) ever settling on it. There are three kinds:</p>
+    <div class="cheat">
+      <div style="background:var(--red)"><b>🧱 Vertical</b><br>A wall at <code style="color:#000">x = a</code>. Graph shoots up or down forever beside it. Comes from the <b>bottom = 0</b>.</div>
+      <div style="background:var(--green)"><b>🌅 Horizontal</b><br>A flat line <code style="color:#000">y = b</code> the graph hugs far to the left/right. Comes from comparing <b>degrees</b>.</div>
+      <div style="background:var(--purple)"><b>📐 Slant</b><br>A tilted line <code style="color:#000">y = mx + b</code> the graph hugs far out. Happens when the top is <b>exactly 1 degree bigger</b>.</div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>🎛️ Try it: pick a function and watch the asymptotes appear</h3>
+    <div class="picker"></div>
+    <div class="toggles">
+      <label><input type="checkbox" data-l="va" checked> <span class="badge b-va">vertical</span></label>
+      <label><input type="checkbox" data-l="ha" checked> <span class="badge b-ha">horizontal</span></label>
+      <label><input type="checkbox" data-l="sl" checked> <span class="badge b-sl">slant</span></label>
+      <label><input type="checkbox" data-l="hole" checked> <span class="badge b-hole">holes</span></label>
+    </div>
+    <div class="plot"></div>
+    <div class="legend">
+      <span><i style="border-color:var(--red)"></i>vertical asymptote</span>
+      <span><i style="border-color:var(--green)"></i>horizontal asymptote</span>
+      <span><i style="border-color:var(--purple)"></i>slant asymptote</span>
+      <span><i class="circ"></i>hole</span>
+    </div>
+    <div class="report" style="margin-top:12px"></div>
+    <p class="muted" style="font-size:.9rem">Tip: you can type your own top and bottom, like <code>x^2-1</code> and <code>(x+2)(x-3)</code>. Use <code>^</code> for powers.</p>
+  </div>
+  <div class="navbtns"><span></span><button class="btn" data-go="vertical">Next: Vertical asymptotes →</button></div>
+</section>
+
+<!-- ============ VERTICAL ============ -->
+<section id="tab-vertical" class="tab" hidden>
+  <div class="card">
+    <h2>🧱 Vertical asymptotes: invisible walls</h2>
+    <p>You can't divide by zero. So if some <i>x</i> makes the <b>bottom 0</b>, the function is undefined there. Near that <i>x</i> the bottom is tiny, and a number divided by something tiny is <b>enormous</b>. The graph rockets up or down along an invisible wall. That wall is a vertical asymptote.</p>
+    <div class="callout"><b>Big catch:</b> if the same factor also sits on top, it <b>cancels</b>, and you get just a <b>hole</b> (open circle), not a wall.</div>
+  </div>
+  <div class="card">
+    <div class="picker"></div>
+    <div class="plot"></div>
+    <div class="legend">
+      <span><i style="border-color:var(--red)"></i>vertical asymptote</span>
+      <span><i class="circ"></i>hole</span>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Find them in 3 steps</h3>
+    <div class="steps"></div>
+    <div class="btns"><button class="btn next">Show step 1 ▶</button><button class="btn ghost reset">Start over</button></div>
+  </div>
+  <div class="card">
+    <h3>🔍 Zoom in on a wall</h3>
+    <p class="muted">Slide to move closer and closer to the asymptote and watch the outputs explode.</p>
+    <div class="zchips chips"></div>
+    <label>How close? <input type="range" class="zt" min="0" max="5" step="0.05" value="0.5"></label>
+    <div class="zout"></div>
+  </div>
+  <div class="card">
+    <h3>⚠️ Common mistakes</h3>
+    <ul>
+      <li>Setting the <b>top</b> equal to 0. That gives <i>x-intercepts</i>, not asymptotes.</li>
+      <li>Forgetting to cancel first. A factor on both top and bottom is a <b>hole</b>.</li>
+      <li>Thinking <i>x² + 1 = 0</i> gives a wall. It has no real solution, so no wall.</li>
+    </ul>
+  </div>
+  <div class="navbtns"><button class="btn ghost" data-go="explore">← Back</button><button class="btn" data-go="horizontal">Next: Horizontal →</button></div>
+</section>
+
+<!-- ============ HORIZONTAL ============ -->
+<section id="tab-horizontal" class="tab" hidden>
+  <div class="card">
+    <h2>🌅 Horizontal asymptotes: where the graph heads at the far ends</h2>
+    <p>Imagine walking far to the right (or left) along the graph. A horizontal asymptote <code>y = b</code> is the height the graph settles toward. It only cares about <b>big |x|</b>, so only the <b>highest powers</b> matter. Just compare the degree of the top and the bottom.</p>
+  </div>
+  <div class="card">
+    <h3>Degree duel</h3>
+    <div class="picker"></div>
+    <div class="duel-out"></div>
+  </div>
+  <div class="card">
+    <h3>🔭 Zoom out and watch it flatten</h3>
+    <div class="plot"></div>
+    <div class="legend">
+      <span><i style="border-color:var(--green)"></i>horizontal asymptote</span>
+      <span><i style="border-color:var(--red)"></i>vertical asymptote</span>
+    </div>
+    <label style="display:block;margin-top:10px">Zoom out → <input type="range" class="hz" min="1" max="4" step="0.02" value="1"></label>
+    <div class="hz-out say"></div>
+    <div class="far"></div>
+    <div class="cross"></div>
+  </div>
+  <div class="navbtns"><button class="btn ghost" data-go="vertical">← Back</button><button class="btn" data-go="slant">Next: Slant →</button></div>
+</section>
+
+<!-- ============ SLANT ============ -->
+<section id="tab-slant" class="tab" hidden>
+  <div class="card">
+    <h2>📐 Slant (oblique) asymptotes: a tilted horizon</h2>
+    <p>When the top is <b>exactly one degree bigger</b> than the bottom, the graph doesn't flatten out. It follows a <b>tilted line</b>. To find it, <b>divide the top by the bottom</b>. The <b>quotient</b> is the line, and the leftover remainder fades away for large |x|.</p>
+    <div class="callout"><span class="frac"><span>P(x)</span><span>Q(x)</span></span> = <b>(mx + b)</b> + <span class="frac"><span>remainder</span><span>Q(x)</span></span> &nbsp; → the fraction part shrinks to 0, leaving <b>y = mx + b</b>.</div>
+  </div>
+  <div class="card">
+    <div class="picker"></div>
+    <div class="sl-check" style="margin:8px 0"></div>
+    <div class="plot"></div>
+    <div class="legend">
+      <span><i style="border-color:var(--purple)"></i>slant asymptote</span>
+      <span><i style="border-color:var(--red)"></i>vertical asymptote</span>
+    </div>
+  </div>
+  <div class="card sl-div-card"><h3>Divide to find the line</h3><div class="sl-div"></div></div>
+  <div class="card">
+    <h3>🔍 Watch the gap close</h3>
+    <div class="chips"><button class="chip on" data-dir="1">far right →</button><button class="chip" data-dir="-1">← far left</button></div>
+    <label>How far out? <input type="range" class="sg-s" min="0.3" max="4" step="0.02" value="0.6"></label>
+    <div class="sl-gap say"></div>
+  </div>
+  <div class="navbtns"><button class="btn ghost" data-go="horizontal">← Back</button><button class="btn" data-go="synth">Next: Synthetic division →</button></div>
+</section>
+
+<!-- ============ SYNTHETIC ============ -->
+<section id="tab-synth" class="tab" hidden>
+  <div class="card">
+    <h2>➗ Synthetic division: a shortcut for dividing by (x − c)</h2>
+    <p>It's long division with all the <i>x</i>'s removed, so you only juggle the <b>coefficients</b>. It works whenever the divisor looks like <b>x − c</b>. (For <i>x + 3</i>, use <i>c = −3</i>.)</p>
+  </div>
+  <div class="card">
+    <label class="muted" style="font-size:.85rem">Pick an example
+      <select class="sy-pre" style="width:100%;padding:8px;border-radius:8px;border:1px solid #cbd5e1;margin:3px 0 8px"></select></label>
+    <div class="pk-row" style="display:grid;grid-template-columns:2fr 1fr;gap:10px">
+      <label class="muted" style="font-size:.85rem">Polynomial (top) <input class="sy-p" style="width:100%;font:inherit;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;margin-top:3px" spellcheck="false"></label>
+      <label class="muted" style="font-size:.85rem">Divide by <input class="sy-d" style="width:100%;font:inherit;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;margin-top:3px" spellcheck="false"></label>
+    </div>
+    <div class="pk-err sy-err"></div>
+    <div class="sy-grid" style="overflow-x:auto"></div>
+    <div class="say sy-say"></div>
+    <div class="btns">
+      <button class="btn ghost sy-back">◀ Back</button>
+      <button class="btn sy-next">Next step ▶</button>
+      <button class="btn ghost sy-play">▶▶ Auto-play</button>
+      <button class="btn ghost sy-reset">Reset</button>
+    </div>
+    <div class="sy-final"></div>
+  </div>
+  <div class="card">
+    <h3>The 3-beat rhythm</h3>
+    <p><b>Bring down</b> the first number → <b>multiply</b> by c and write it under the next number → <b>add</b> the column. Repeat. The last total is the <b>remainder</b>; the others are the <b>quotient</b>'s coefficients (one degree lower than the original).</p>
+    <div class="warn"><b>Don't skip zeros!</b> If a power is missing (like <i>x⁴</i> in <i>x⁵ + x³ − x²</i>), write a <b>0</b> for it.</div>
+  </div>
+  <div class="navbtns"><button class="btn ghost" data-go="slant">← Back</button><button class="btn" data-go="practice">Next: Practice →</button></div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="tab-practice" class="tab" hidden>
+  <div class="card">
+    <h2>🏋️ Practice</h2>
+    <p class="muted">Pick a skill. You'll see the handout examples first, then endless fresh problems.</p>
+    <div class="chips pr-chips"></div>
+    <div class="score pr-score"></div>
+  </div>
+  <div class="card pr-card">
+    <div class="pr-tag muted"></div>
+    <div class="pr-prompt"></div>
+    <div class="pr-fn big" style="text-align:center;margin:10px 0"></div>
+    <div class="pr-inputs"></div>
+    <div class="btns">
+      <button class="btn pr-check">Check ✓</button>
+      <button class="btn ghost pr-hint">💡 Hint</button>
+      <button class="btn ghost pr-peek">📈 Peek at graph</button>
+      <button class="btn ghost pr-sol">👀 Show solution</button>
+      <button class="btn green pr-next">Next problem →</button>
+    </div>
+    <div class="pr-fb"></div>
+    <div class="pr-plotbox" hidden style="margin-top:10px"><div class="plot"></div>
+      <div class="legend">
+        <span><i style="border-color:var(--red)"></i>vertical</span>
+        <span><i style="border-color:var(--green)"></i>horizontal</span>
+        <span><i style="border-color:var(--purple)"></i>slant</span>
+        <span><i class="circ"></i>hole</span>
+      </div></div>
+    <div class="pr-sol-out"></div>
+  </div>
+</section>
+
+</main>
+
+<script>
+'use strict';
+// ==MATH-START==
+const EPS = 1e-9;
+const trim = p => { const a = p.slice(); while (a.length > 1 && Math.abs(a[a.length - 1]) < EPS) a.pop(); return a.length ? a : [0]; };
+const isZero = p => { const t = trim(p); return t.length === 1 && Math.abs(t[0]) < EPS; };
+const deg = p => isZero(p) ? -Infinity : trim(p).length - 1;
+const padd = (a, b) => { const n = Math.max(a.length, b.length), r = []; for (let i = 0; i < n; i++) r.push((a[i] || 0) + (b[i] || 0)); return trim(r); };
+const pneg = a => a.map(c => -c);
+const psub = (a, b) => padd(a, pneg(b));
+const pmul = (a, b) => { const r = Array(a.length + b.length - 1).fill(0); for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++) r[i + j] += a[i] * b[j]; return trim(r); };
+const pscale = (a, k) => trim(a.map(c => c * k));
+const ppow = (a, n) => { let r = [1]; for (let i = 0; i < n; i++) r = pmul(r, a); return r; };
+const peval = (p, x) => { let r = 0; for (let i = p.length - 1; i >= 0; i--) r = r * x + p[i]; return r; };
+const deriv = p => p.length < 2 ? [0] : p.slice(1).map((c, i) => c * (i + 1));
+const clean = v => Math.abs(v) < 1e-9 ? 0 : v;
+
+function pdivmod(N, D) {
+  N = trim(N); D = trim(D);
+  if (isZero(D)) throw new Error('Division by the zero polynomial');
+  const dd = D.length - 1, r = N.slice();
+  const q = Array(Math.max(N.length - dd, 1)).fill(0);
+  for (let i = N.length - 1; i >= dd; i--) {
+    const c = r[i] / D[dd]; q[i - dd] = c;
+    for (let j = 0; j <= dd; j++) r[i - dd + j] -= c * D[j];
+  }
+  return { q: trim(q.map(clean)), r: trim(r.slice(0, Math.max(dd, 1)).map(clean)) };
+}
+
+function normalizeExpr(s) {
+  return String(s).toLowerCase().replace(/[−–—]/g, '-').replace(/[·×]/g, '*').replace(/÷/g, '/')
+    .replace(/²/g, '^2').replace(/³/g, '^3').replace(/⁴/g, '^4').replace(/⁵/g, '^5').replace(/⁶/g, '^6').replace(/\s+/g, '');
+}
+
+function parsePoly(str) {
+  const s = normalizeExpr(str);
+  if (!s) throw new Error('Type something here.');
+  let i = 0;
+  const peek = () => s[i];
+  const isStart = c => c === 'x' || c === '(' || (c >= '0' && c <= '9') || c === '.';
+  function expr() {
+    let v = term();
+    while (peek() === '+' || peek() === '-') { const op = s[i++]; const t = term(); v = op === '+' ? padd(v, t) : psub(v, t); }
+    return v;
+  }
+  function term() {
+    let v = unary();
+    for (;;) {
+      const c = peek();
+      if (c === '*') { i++; v = pmul(v, unary()); }
+      else if (c === '/') {
+        i++; const d = unary();
+        if (deg(d) > 0) throw new Error('Type just the top or just the bottom (you can only divide by plain numbers here).');
+        v = pscale(v, 1 / d[0]);
+      }
+      else if (c !== undefined && isStart(c)) v = pmul(v, unary());
+      else break;
+    }
+    return v;
+  }
+  function unary() {
+    if (peek() === '-') { i++; return pneg(unary()); }
+    if (peek() === '+') { i++; return unary(); }
+    return power();
+  }
+  function power() {
+    let b = atom();
+    while (peek() === '^') {
+      i++;
+      const m = /^\d+/.exec(s.slice(i));
+      if (!m) throw new Error('Powers must be whole numbers, like x^2.');
+      i += m[0].length;
+      const n = parseInt(m[0], 10);
+      if (n > 12) throw new Error('That power is too big.');
+      b = ppow(b, n);
+    }
+    return b;
+  }
+  function atom() {
+    const c = peek();
+    if (c === '(') { i++; const v = expr(); if (peek() !== ')') throw new Error('Missing a closing parenthesis.'); i++; return v; }
+    if (c === 'x') { i++; return [0, 1]; }
+    const m = /^(\d+\.?\d*|\.\d+)/.exec(s.slice(i));
+    if (m) { i += m[0].length; return [parseFloat(m[0])]; }
+    throw new Error(c === undefined ? 'The expression ends too early.' : 'I didn\'t understand "' + c + '".');
+  }
+  const r = expr();
+  if (i < s.length) throw new Error('I didn\'t understand "' + s[i] + '".');
+  return trim(r);
+}
+
+const gcd = (a, b) => b ? gcd(b, a % b) : a;
+function fmtNum(x) {
+  if (!isFinite(x)) return String(x);
+  for (let d = 1; d <= 24; d++) {
+    const n = Math.round(x * d);
+    if (Math.abs(x - n / d) < 1e-8) { const g = gcd(Math.abs(n), d) || 1; const nn = n / g, dd = d / g; return dd === 1 ? String(nn) : nn + '/' + dd; }
+  }
+  return String(+x.toFixed(4));
+}
+function polyStr(p, html = true) {
+  p = trim(p);
+  const parts = [];
+  for (let i = p.length - 1; i >= 0; i--) {
+    const c = p[i]; if (Math.abs(c) < 1e-9) continue;
+    const a = Math.abs(c);
+    let cs = (Math.abs(a - 1) < 1e-9 && i > 0) ? '' : fmtNum(a);
+    if (cs.includes('/') && i > 0) cs = '(' + cs + ')';
+    const xs = i === 0 ? '' : i === 1 ? 'x' : (html ? 'x<sup>' + i + '</sup>' : 'x^' + i);
+    parts.push([c < 0, cs + xs]);
+  }
+  if (!parts.length) return '0';
+  return parts.map(([neg, t], k) => k === 0 ? (neg ? (html ? '−' : '-') : '') + t
+    : (html ? (neg ? ' − ' : ' + ') : (neg ? '-' : '+')) + t).join('');
+}
+
+function divisors(n) { n = Math.round(n); const d = []; for (let i = 1; i * i <= n; i++) if (n % i === 0) { d.push(i); if (i * i !== n) d.push(n / i); } return d; }
+function intify(p) {
+  for (let m = 1; m <= 360; m++) if (p.every(c => Math.abs(c * m - Math.round(c * m)) < 1e-7)) return p.map(c => Math.round(c * m));
+  return null;
+}
+function numericRealRoots(p) {
+  const n = p.length - 1, a = p.map(c => c / p[n]);
+  const R = 1 + Math.max(...a.slice(0, n).map(Math.abs));
+  const z = [];
+  for (let k = 0; k < n; k++) { const t = 2 * Math.PI * k / n + 0.5; z.push({ re: 0.6 * R * Math.cos(t), im: 0.6 * R * Math.sin(t) }); }
+  const cmul = (u, v) => ({ re: u.re * v.re - u.im * v.im, im: u.re * v.im + u.im * v.re });
+  const csub = (u, v) => ({ re: u.re - v.re, im: u.im - v.im });
+  const cdiv = (u, v) => { const d = v.re * v.re + v.im * v.im; return { re: (u.re * v.re + u.im * v.im) / d, im: (u.im * v.re - u.re * v.im) / d }; };
+  for (let it = 0; it < 400; it++) {
+    for (let k = 0; k < n; k++) {
+      let pv = { re: 0, im: 0 };
+      for (let i = n; i >= 0; i--) { pv = cmul(pv, z[k]); pv.re += a[i]; }
+      let den = { re: 1, im: 0 };
+      for (let j = 0; j < n; j++) if (j !== k) den = cmul(den, csub(z[k], z[j]));
+      const step = cdiv(pv, den);
+      if (isFinite(step.re) && isFinite(step.im)) z[k] = csub(z[k], step);
+    }
+  }
+  const out = [], dp = deriv(p);
+  for (const w of z) {
+    if (isFinite(w.re) && Math.abs(w.im) < 1e-6 * (1 + Math.abs(w.re))) {
+      let x = w.re;
+      for (let i = 0; i < 8; i++) { const d = peval(dp, x); if (Math.abs(d) < 1e-12) break; x -= peval(p, x) / d; }
+      out.push(x);
+    }
+  }
+  return out;
+}
+// real roots with multiplicity, plus the leftover (non-real) factor
+function realRoots(poly) {
+  const orig = trim(poly); let work = orig.slice(); const found = [];
+  while (deg(work) >= 1) {
+    const ip = intify(work); if (ip) work = ip;
+    let r = null;
+    if (ip) {
+      const n = ip.length - 1;
+      if (ip[0] === 0) r = 0;
+      else {
+        const a0 = Math.abs(ip[0]), an = Math.abs(ip[n]);
+        if (a0 <= 1e6 && an <= 1e6) {
+          outer: for (const q of divisors(an)) for (const p of divisors(a0)) for (const s of [1, -1]) {
+            const x = s * p / q;
+            const sc = ip.reduce((t, c, i) => t + Math.abs(c) * Math.pow(Math.abs(x), i), 0);
+            if (Math.abs(peval(ip, x)) <= 1e-9 * sc) { r = x; break outer; }
+          }
+        }
+      }
+    }
+    if (r === null) break;
+    found.push(r); work = pdivmod(work, [-r, 1]).q;
+  }
+  const d = deg(work);
+  if (d === 1) found.push(-work[0] / work[1]);
+  else if (d === 2) {
+    const c = work[0], b = work[1], a = work[2], D = b * b - 4 * a * c;
+    if (Math.abs(D) < 1e-9) { const r = -b / (2 * a); found.push(r, r); }
+    else if (D > 0) { const s = Math.sqrt(D); found.push((-b + s) / (2 * a), (-b - s) / (2 * a)); }
+  } else if (d >= 3) found.push(...numericRealRoots(work));
+  found.sort((a, b) => a - b);
+  const roots = [];
+  for (const x of found) {
+    const last = roots[roots.length - 1];
+    if (last && Math.abs(last.x - x) < 1e-5 * (1 + Math.abs(x))) last.mult++; else roots.push({ x, mult: 1 });
+  }
+  let rest = orig;
+  for (const { x, mult } of roots) for (let i = 0; i < mult; i++) rest = pdivmod(rest, [-x, 1]).q;
+  return { roots, rest: trim(rest.map(clean)) };
+}
+function multAt(P, r) {
+  if (isZero(P)) return Infinity;
+  let m = 0, cur = trim(P);
+  for (;;) {
+    const scale = cur.reduce((s, c, i) => s + Math.abs(c) * Math.pow(Math.abs(r), i), 0);
+    if (Math.abs(peval(cur, r)) > 1e-7 * (scale + 1)) break;
+    m++;
+    if (cur.length < 2) break;
+    cur = pdivmod(cur, [-r, 1]).q;
+  }
+  return m;
+}
+
+function analyze(P, Q) {
+  P = trim(P); Q = trim(Q);
+  if (isZero(Q)) throw new Error("The bottom can't be 0.");
+  const dP = deg(P), dQ = deg(Q);
+  const f = x => peval(P, x) / peval(Q, x);
+  const qf = realRoots(Q), pf = realRoots(P);
+  const va = [], holes = [];
+  for (const { x: r, mult: mq } of qf.roots) {
+    const mp = multAt(P, r);
+    if (mp >= mq) {
+      let Pp = P, Qp = Q;
+      for (let i = 0; i < mq; i++) { Pp = pdivmod(Pp, [-r, 1]).q; Qp = pdivmod(Qp, [-r, 1]).q; }
+      holes.push({ x: r, y: isZero(Pp) ? 0 : peval(Pp, r) / peval(Qp, r) });
+    } else {
+      const h = 1e-5 * (1 + Math.abs(r));
+      va.push({ x: r, left: Math.sign(f(r - h)), right: Math.sign(f(r + h)) });
+    }
+  }
+  const xint = pf.roots.filter(rt => multAt(Q, rt.x) === 0).map(rt => rt.x);
+  const yint = Math.abs(peval(Q, 0)) > 1e-9 ? peval(P, 0) / peval(Q, 0) : null;
+  let ha = null, slant = null, polyEnd = null;
+  if (isZero(P) || dP < dQ) ha = { y: 0, rule: 'less' };
+  else if (dP === dQ) ha = { y: P[dP] / Q[dQ], rule: 'equal' };
+  else {
+    const dm = pdivmod(P, Q);
+    if (dP === dQ + 1) slant = { m: dm.q[1], b: dm.q[0], q: dm.q, r: dm.r };
+    else polyEnd = dm.q;
+  }
+  return { P, Q, dP, dQ, va, holes, xint, yint, ha, slant, polyEnd, qf, pf, f };
+}
+
+function synthCompute(coeffs, c) {
+  const n = coeffs.length, b = [coeffs[0]], prod = [null];
+  for (let i = 1; i < n; i++) { prod[i] = c * b[i - 1]; b[i] = coeffs[i] + prod[i]; }
+  return { b, prod };
+}
+// ==MATH-END==
+
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const pretty = s => esc(s).replace(/\^(\d+)/g, '<sup>$1</sup>').replace(/-/g, '−');
+const fracHTML = (n, d) => '<span class="frac"><span>' + n + '</span><span>' + d + '</span></span>';
+const fnHTML = (n, d, name = 'f') => name + '(x) = ' + fracHTML(pretty(n), pretty(d));
+function fmtVal(y) {
+  if (!isFinite(y)) return y > 0 ? '+∞' : y < 0 ? '−∞' : 'undefined';
+  if (y === 0) return '0';
+  if (Math.abs(y) >= 1e7 || Math.abs(y) < 1e-4) return y.toExponential(2).replace('-', '−');
+  return String(parseFloat(y.toPrecision(7))).replace('-', '−');
+}
+const sgnArrow = y => y > 0 ? '⬆ up forever' : '⬇ down forever';
+function factorHTML(poly) {
+  const { roots, rest } = realRoots(poly);
+  const dr = deg(rest);
+  if (!roots.length) return polyStr(rest);
+  const fx = r => Math.abs(r) < 1e-9 ? 'x' : '(x ' + (r > 0 ? '−' : '+') + ' ' + fmtNum(Math.abs(r)) + ')';
+  let lead = '';
+  if (dr === 0) { const c = rest[0]; if (Math.abs(c - 1) < 1e-9) lead = ''; else if (Math.abs(c + 1) < 1e-9) lead = '−'; else lead = fmtNum(c); }
+  const fs = roots.map(({ x, mult }) => fx(x) + (mult > 1 ? '<sup>' + mult + '</sup>' : ''));
+  if (dr > 0) fs.push('(' + polyStr(rest) + ')');
+  return lead + fs.join('');
+}
+const eqX = a => 'x = ' + fmtNum(a).replace('-', '−');
+const eqSlant = s => 'y = ' + polyStr([s.b, s.m]);
+
+function reportHTML(an) {
+  const rows = [];
+  rows.push('<tr><td><span class="badge b-va">vertical</span></td><td>' +
+    (an.va.length ? an.va.map(v => '<b>' + eqX(v.x) + '</b>').join(', ') : '<b>none</b>') +
+    '</td><td class="muted">' + (an.va.length ? 'bottom = 0 and it doesn\'t cancel' : 'the bottom never hits 0 (or it all cancels)') + '</td></tr>');
+  if (an.holes.length) rows.push('<tr><td><span class="badge b-hole">hole</span></td><td>' +
+    an.holes.map(h => '(' + fmtNum(h.x).replace('-', '−') + ', ' + fmtNum(h.y).replace('-', '−') + ')').join(', ') +
+    '</td><td class="muted">this factor cancels top and bottom</td></tr>');
+  let hz, why;
+  if (an.ha) { hz = '<b>y = ' + fmtNum(an.ha.y).replace('-', '−') + '</b>'; why = an.ha.rule === 'less' ? 'top degree < bottom degree → y = 0' : 'same degrees → ratio of leading coefficients'; }
+  else { hz = '<b>none</b>'; why = 'top degree is bigger than bottom degree'; }
+  rows.push('<tr><td><span class="badge b-ha">horizontal</span></td><td>' + hz + '</td><td class="muted">' + why + '</td></tr>');
+  rows.push('<tr><td><span class="badge b-sl">slant</span></td><td>' + (an.slant ? '<b>' + eqSlant(an.slant) + '</b>' : '<b>none</b>') +
+    '</td><td class="muted">' + (an.slant ? 'top is exactly 1 degree bigger → divide' : 'needs top degree = bottom degree + 1') + '</td></tr>');
+  rows.push('<tr><td><span class="badge b-int">intercepts</span></td><td colspan="2">' +
+    (an.xint.length ? 'x-int: ' + an.xint.map(x => fmtNum(x).replace('-', '−')).join(', ') : 'no x-intercepts') + ' &nbsp;·&nbsp; ' +
+    (an.yint !== null ? 'y-int: ' + fmtNum(an.yint).replace('-', '−') : 'no y-intercept') + '</td></tr>');
+  return '<table class="t" style="text-align:left"><tbody>' + rows.join('') + '</tbody></table>';
+}
+
+/* ---------- Plot ---------- */
+class Plot {
+  constructor(host, opts = {}) {
+    this.host = host; this.height = opts.height || 340; this.showAsym = opts.showAsym !== false;
+    this.layers = { va: true, ha: true, sl: true, hole: true };
+    host.classList.add('plotwrap');
+    host.innerHTML = '<canvas></canvas><div class="plotbar"><button data-a="in" aria-label="Zoom in">＋</button><button data-a="out" aria-label="Zoom out">－</button><button data-a="reset">Reset view</button><span>drag to move · scroll to zoom · hover to trace</span></div>';
+    this.cv = host.querySelector('canvas'); this.ctx = this.cv.getContext('2d');
+    this.view = { x0: -10, x1: 10, y0: -10, y1: 10 };
+    this.an = null; this.markers = []; this.hoverX = null; this.W = 0; this.H = this.height;
+    this.f = () => NaN;
+    const cv = this.cv; let drag = null;
+    const world = e => { const r = cv.getBoundingClientRect(), v = this.view; return { x: v.x0 + (e.clientX - r.left) / r.width * (v.x1 - v.x0), y: v.y1 - (e.clientY - r.top) / r.height * (v.y1 - v.y0) }; };
+    cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, v: { ...this.view } }; this.hoverX = world(e).x; this.draw(); });
+    cv.addEventListener('pointermove', e => {
+      if (drag) {
+        const r = cv.getBoundingClientRect(), v = drag.v, wx = (v.x1 - v.x0) / r.width, wy = (v.y1 - v.y0) / r.height;
+        const dx = (e.clientX - drag.x) * wx, dy = (e.clientY - drag.y) * wy;
+        this.view = { x0: v.x0 - dx, x1: v.x1 - dx, y0: v.y0 + dy, y1: v.y1 + dy };
+      }
+      this.hoverX = world(e).x; this.draw();
+    });
+    const end = () => { drag = null; };
+    cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+    cv.addEventListener('pointerleave', () => { if (!drag) { this.hoverX = null; this.draw(); } });
+    cv.addEventListener('wheel', e => { e.preventDefault(); const w = world(e); this.zoom(e.deltaY > 0 ? 1.15 : 1 / 1.15, w.x, w.y); }, { passive: false });
+    host.querySelectorAll('.plotbar button').forEach(b => b.addEventListener('click', () => {
+      const a = b.dataset.a, v = this.view;
+      if (a === 'reset') this.autoView(this.xr); else this.zoom(a === 'in' ? 1 / 1.4 : 1.4, (v.x0 + v.x1) / 2, (v.y0 + v.y1) / 2);
+    }));
+    new ResizeObserver(() => this.resize()).observe(host);
+  }
+  zoom(f, cx, cy) { const v = this.view; this.view = { x0: cx - (cx - v.x0) * f, x1: cx + (v.x1 - cx) * f, y0: cy - (cy - v.y0) * f, y1: cy + (v.y1 - cy) * f }; this.draw(); }
+  resize() {
+    const w = this.host.clientWidth; if (!w) return;
+    this.dpr = window.devicePixelRatio || 1; this.W = w; this.H = this.height;
+    this.cv.style.height = this.height + 'px'; this.cv.width = w * this.dpr; this.cv.height = this.height * this.dpr;
+    this.draw();
+  }
+  set(P, Q, an, xr) { this.an = an; this.f = x => peval(P, x) / peval(Q, x); this.markers = []; this.autoView(xr); }
+  autoView(xr) {
+    const an = this.an; if (!an) return;
+    this.xr = xr;
+    const pts = [...an.va.map(v => v.x), ...an.holes.map(h => h.x), ...an.xint];
+    const m = Math.max(0, ...pts.map(Math.abs));
+    const X = xr || Math.max(8, Math.ceil(m * 1.6));
+    const ys = [];
+    for (let i = 0; i <= 400; i++) {
+      const x = -X + 2 * X * i / 400, y = this.f(x);
+      if (isFinite(y) && !an.va.some(v => Math.abs(x - v.x) < X * 0.03)) ys.push(y);
+    }
+    ys.sort((a, b) => a - b);
+    let lo = 0, hi = 0;
+    if (ys.length) { lo = ys[Math.floor(ys.length * 0.08)]; hi = ys[Math.floor(ys.length * 0.92)]; }
+    if (an.ha) { lo = Math.min(lo, an.ha.y); hi = Math.max(hi, an.ha.y); }
+    lo = Math.min(lo, 0); hi = Math.max(hi, 0);
+    const span = Math.max(hi - lo, 4), pad = span * 0.35;
+    const mid = (hi + lo) / 2;
+    this.view = { x0: -X, x1: X, y0: mid - span / 2 - pad, y1: mid + span / 2 + pad };
+    this.draw();
+  }
+  draw() {
+    if (!this.W) return;
+    const { ctx, W, H, view: v, an } = this;
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+    const X = x => (x - v.x0) / (v.x1 - v.x0) * W, Y = y => H - (y - v.y0) / (v.y1 - v.y0) * H;
+    const ticks = (lo, hi) => { const raw = (hi - lo) / 8, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p, step = (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; const out = []; for (let t = Math.ceil(lo / step) * step; t <= hi; t += step) out.push(+t.toPrecision(12)); return out; };
+    const tl = n => Math.abs(n) >= 1e5 || (Math.abs(n) < 1e-3 && n !== 0) ? n.toExponential(0) : String(parseFloat(n.toPrecision(6))).replace('-', '−');
+    const halo = (t, x, y, color, align) => { ctx.textAlign = align || 'left'; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.strokeText(t, x, y); ctx.fillStyle = color; ctx.fillText(t, x, y); };
+    // grid + axes
+    ctx.font = '11px system-ui'; ctx.lineWidth = 1;
+    const xt = ticks(v.x0, v.x1), yt = ticks(v.y0, v.y1);
+    ctx.strokeStyle = '#eef0f4';
+    xt.forEach(t => { ctx.beginPath(); ctx.moveTo(X(t), 0); ctx.lineTo(X(t), H); ctx.stroke(); });
+    yt.forEach(t => { ctx.beginPath(); ctx.moveTo(0, Y(t)); ctx.lineTo(W, Y(t)); ctx.stroke(); });
+    const ax = Math.min(Math.max(X(0), 0), W), ay = Math.min(Math.max(Y(0), 0), H);
+    ctx.strokeStyle = '#6b7280'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(0, ay); ctx.lineTo(W, ay); ctx.moveTo(ax, 0); ctx.lineTo(ax, H); ctx.stroke();
+    ctx.fillStyle = '#6b7280';
+    xt.forEach(t => { if (Math.abs(t) > 1e-9) { ctx.textAlign = 'center'; ctx.fillText(tl(t), X(t), Math.min(ay + 14, H - 3)); } });
+    yt.forEach(t => { if (Math.abs(t) > 1e-9) { ctx.textAlign = ax > W - 34 ? 'right' : 'left'; ctx.fillText(tl(t), ax > W - 34 ? ax - 4 : ax + 4, Y(t) + 4); } });
+    ctx.font = '600 13px system-ui';
+    // asymptote overlays
+    if (an && this.showAsym) {
+      ctx.setLineDash([7, 5]); ctx.lineWidth = 2;
+      if (this.layers.va) an.va.forEach(a => {
+        const px = X(a.x); ctx.strokeStyle = '#dc2626'; ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, H); ctx.stroke();
+        if (px > W - 70) halo(eqX(a.x), px - 5, 16, '#dc2626', 'right'); else halo(eqX(a.x), px + 5, 16, '#dc2626');
+      });
+      if (this.layers.ha && an.ha) {
+        const py = Y(an.ha.y); ctx.strokeStyle = '#16a34a'; ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(W, py); ctx.stroke();
+        halo('y = ' + fmtNum(an.ha.y).replace('-', '−'), W - 6, py - 6, '#16a34a', 'right');
+      }
+      if (this.layers.sl && an.slant) {
+        const s = an.slant; ctx.strokeStyle = '#7c3aed'; ctx.beginPath(); ctx.moveTo(0, Y(s.m * v.x0 + s.b)); ctx.lineTo(W, Y(s.m * v.x1 + s.b)); ctx.stroke();
+        const lx = v.x0 + (v.x1 - v.x0) * 0.14; halo(eqSlant(s), X(lx), Y(s.m * lx + s.b) - 10, '#7c3aed');
+      }
+      ctx.setLineDash([]);
+    }
+    // curve
+    const vas = an ? an.va.map(a => a.x) : [];
+    const cl = y => Math.max(-3000, Math.min(H + 3000, Y(y)));
+    const N = Math.ceil(W), dx = (v.x1 - v.x0) / N;
+    ctx.beginPath(); let pen = false, px = 0;
+    for (let i = 0; i <= N; i++) {
+      const x = v.x0 + i * dx, y = this.f(x);
+      if (!isFinite(y)) { pen = false; continue; }
+      if (pen) {
+        const a = vas.find(a => a > px && a <= x);
+        if (a !== undefined) {
+          const e = 1e-6 * (1 + Math.abs(a)), yl = this.f(a - e), yr = this.f(a + e);
+          if (isFinite(yl)) ctx.lineTo(X(a), cl(yl));
+          if (isFinite(yr)) { ctx.moveTo(X(a), cl(yr)); }
+        }
+      }
+      if (pen) ctx.lineTo(X(x), cl(y)); else ctx.moveTo(X(x), cl(y));
+      pen = true; px = x;
+    }
+    ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 2.8; ctx.lineJoin = 'round'; ctx.stroke();
+    // holes + intercepts
+    if (an && this.showAsym) {
+      if (this.layers.hole) an.holes.forEach(h => {
+        ctx.beginPath(); ctx.arc(X(h.x), Y(h.y), 6, 0, 7); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 2.6; ctx.strokeStyle = '#ea580c'; ctx.stroke();
+        halo('hole', X(h.x) + 9, Y(h.y) - 8, '#ea580c');
+      });
+      ctx.fillStyle = '#475569';
+      an.xint.forEach(x => { ctx.beginPath(); ctx.arc(X(x), Y(0), 3.5, 0, 7); ctx.fill(); });
+      if (an.yint !== null) { ctx.beginPath(); ctx.arc(X(0), Y(an.yint), 3.5, 0, 7); ctx.fill(); }
+    }
+    // markers
+    for (const m of this.markers) {
+      if (!isFinite(m.x) || !isFinite(m.y)) continue;
+      let mx = X(m.x), my = Y(m.y), out = null; const pad = 10;
+      if (my < pad) { my = pad; out = '▲'; } else if (my > H - pad) { my = H - pad; out = '▼'; }
+      if (mx < pad) { mx = pad; out = '◀'; } else if (mx > W - pad) { mx = W - pad; out = '▶'; }
+      ctx.beginPath(); ctx.arc(mx, my, 6.5, 0, 7); ctx.fillStyle = m.color; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
+      if (out) { ctx.font = '12px system-ui'; ctx.fillStyle = m.color; ctx.textAlign = 'center'; ctx.fillText(out, mx, out === '▲' ? my + 20 : my - 10); }
+    }
+    // hover trace
+    if (this.hoverX !== null) {
+      const hx = this.hoverX, hy = this.f(hx);
+      ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(X(hx), 0); ctx.lineTo(X(hx), H); ctx.stroke(); ctx.setLineDash([]);
+      if (isFinite(hy) && Y(hy) > -50 && Y(hy) < H + 50) { ctx.beginPath(); ctx.arc(X(hx), Y(hy), 5, 0, 7); ctx.fillStyle = '#111827'; ctx.fill(); }
+      const txt = 'x = ' + fmtVal(hx) + '    f(x) = ' + (isFinite(hy) ? fmtVal(hy) : 'undefined');
+      ctx.font = '600 12px system-ui'; const tw = ctx.measureText(txt).width;
+      ctx.fillStyle = 'rgba(17,24,39,.88)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(8, H - 30, tw + 16, 22, 6) : ctx.rect(8, H - 30, tw + 16, 22); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(txt, 16, H - 14);
+    }
+  }
+}
+
+/* ---------- Presets + Picker ---------- */
+const PRESETS = [
+  { name: 'Handout Ex. 1:  x(x−2) ÷ x(x−1)(x+1)', n: 'x(x-2)', d: 'x(x-1)(x+1)', tags: ['v', 'h', 'e'] },
+  { name: 'Handout Ex. 2:  1 ÷ x(x²−16)', n: '1', d: 'x(x^2-16)', tags: ['v', 'e'] },
+  { name: 'Handout Ex. 3:  (3x²+2x−4) ÷ (2x²−x+1)', n: '3x^2+2x-4', d: '2x^2-x+1', tags: ['h', 'e'] },
+  { name: 'Handout Ex. 4:  (2x−1)(x+1) ÷ (3x+2)(5x+6)', n: '(2x-1)(x+1)', d: '(3x+2)(5x+6)', tags: ['h', 'e'] },
+  { name: 'Handout Ex. 5:  (x²−4) ÷ (x−1)', n: 'x^2-4', d: 'x-1', tags: ['s', 'e'] },
+  { name: 'Handout Ex. 6:  (2x²+x−1) ÷ (x−3)', n: '2x^2+x-1', d: 'x-3', tags: ['s', 'e'] },
+  { name: 'A hole: (x−2)(x+3) ÷ (x−2)(x+1)', n: '(x-2)(x+3)', d: '(x-2)(x+1)', tags: ['v', 'e'] },
+  { name: 'Same-side wall: 1 ÷ x²', n: '1', d: 'x^2', tags: ['v'] },
+  { name: 'Two walls: 5x ÷ (x²−9)', n: '5x', d: 'x^2-9', tags: ['v', 'h', 'e'] },
+  { name: 'No walls: x ÷ (x²+1) (crosses its HA!)', n: 'x', d: 'x^2+1', tags: ['v', 'h', 'e'] },
+  { name: 'Same degree: (4x²−1) ÷ (2x²+x)', n: '4x^2-1', d: '2x^2+x', tags: ['h'] },
+  { name: 'Slant: x³ ÷ (x²−1)', n: 'x^3', d: 'x^2-1', tags: ['s'] },
+  { name: 'Slant: (x²+4x−5) ÷ (x+3)', n: 'x^2+4x-5', d: 'x+3', tags: ['s'] },
+  { name: 'Too steep for slant: x³ ÷ (x−1)', n: 'x^3', d: 'x-1', tags: ['h', 's'] },
+];
+
+class Picker {
+  constructor(el, tags, onChange) {
+    this.el = el; this.onChange = onChange;
+    this.list = PRESETS.filter(p => !tags || p.tags.some(t => tags.includes(t)) || p.tags.includes('e') && tags.includes('e'));
+    el.innerHTML = '<label>Pick an example <select class="pk-sel">' + this.list.map((p, i) => '<option value="' + i + '">' + esc(p.name) + '</option>').join('') +
+      '<option value="c">✏️ My own function…</option></select></label>' +
+      '<div class="pk-row"><label>Top (numerator)<input class="pk-n" spellcheck="false" autocomplete="off"></label>' +
+      '<label>Bottom (denominator)<input class="pk-d" spellcheck="false" autocomplete="off"></label></div>' +
+      '<div class="pk-show"></div><div class="pk-err"></div>';
+    this.sel = $('.pk-sel', el); this.n = $('.pk-n', el); this.d = $('.pk-d', el);
+    this.sel.addEventListener('change', () => { if (this.sel.value !== 'c') { const p = this.list[+this.sel.value]; this.n.value = p.n; this.d.value = p.d; this.apply(); } else this.n.focus(); });
+    const live = () => { this.sel.value = 'c'; this.apply(); };
+    this.n.addEventListener('input', live); this.d.addEventListener('input', live);
+    this.sel.value = '0'; this.n.value = this.list[0].n; this.d.value = this.list[0].d; this.apply();
+  }
+  apply() {
+    try {
+      const P = parsePoly(this.n.value), Q = parsePoly(this.d.value);
+      if (isZero(Q)) throw new Error("The bottom can't be 0.");
+      $('.pk-err', this.el).textContent = '';
+      $('.pk-show', this.el).innerHTML = fnHTML(this.n.value, this.d.value);
+      this.onChange(P, Q, { n: this.n.value, d: this.d.value });
+    } catch (e) { $('.pk-err', this.el).textContent = '⚠️ ' + e.message; }
+  }
+  setValues(n, d) { this.sel.value = 'c'; this.n.value = n; this.d.value = d; this.apply(); }
+}
+
+/* ---------- Tabs ---------- */
+const TABS = ['explore', 'vertical', 'horizontal', 'slant', 'synth', 'practice'];
+function go(id) {
+  if (!TABS.includes(id)) id = 'explore';
+  TABS.forEach(t => { $('#tab-' + t).hidden = t !== id; $('nav button[data-tab="' + t + '"]').classList.toggle('on', t === id); });
+  if (location.hash !== '#' + id) history.replaceState(null, '', '#' + id);
+  window.scrollTo(0, 0);
+}
+$$('nav button').forEach(b => b.addEventListener('click', () => go(b.dataset.tab)));
+document.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
+
+/* ================= EXPLORE ================= */
+(function () {
+  const root = $('#tab-explore'), plot = new Plot($('.plot', root));
+  new Picker($('.picker', root), null, (P, Q) => { const an = analyze(P, Q); plot.set(P, Q, an); $('.report', root).innerHTML = reportHTML(an); });
+  $$('.toggles input', root).forEach(cb => cb.addEventListener('change', () => { plot.layers[cb.dataset.l] = cb.checked; plot.draw(); }));
+})();
+
+/* ================= VERTICAL ================= */
+(function () {
+  const root = $('#tab-vertical'), plot = new Plot($('.plot', root));
+  plot.layers = { va: true, ha: false, sl: false, hole: true };
+  let an = null, step = 0, zi = 0, curP, curQ;
+  const stepsEl = $('.steps', root), nextBtn = $('.next', root), slider = $('.zt', root);
+  function renderSteps() {
+    const out = [];
+    const num = n => '<div class="num">' + n + '</div>';
+    if (step >= 1) out.push('<div class="step">' + num(1) + '<div><b>Factor the top and the bottom.</b><div class="big">f(x) = ' + fracHTML(factorHTML(curP), factorHTML(curQ)) + '</div>' +
+      '<span class="muted">Anything that can\'t be factored (like x² + 1) stays in parentheses.</span></div></div>');
+    if (step >= 2) out.push('<div class="step">' + num(2) + '<div><b>Cancel factors that appear on top AND bottom.</b><br>' +
+      (an.holes.length ? an.holes.map(h => 'The factor <b>' + (Math.abs(h.x) < 1e-9 ? 'x' : '(x ' + (h.x > 0 ? '−' : '+') + ' ' + fmtNum(Math.abs(h.x)) + ')') + '</b> is on both → it cancels → <span class="badge b-hole">hole</span> at <b>' + eqX(h.x) + '</b> (the point is (' + fmtNum(h.x).replace('-', '−') + ', ' + fmtNum(h.y).replace('-', '−') + ')).').join('<br>')
+        : 'Nothing cancels here, so there are no holes.') + '</div></div>');
+    if (step >= 3) out.push('<div class="step">' + num(3) + '<div><b>Set what\'s left of the bottom equal to 0.</b><br>' +
+      (an.va.length ? an.va.map(v => '<span class="badge b-va">wall</span> <b>' + eqX(v.x) + '</b> — the graph goes ' + (v.left > 0 ? '⬆' : '⬇') + ' on the left and ' + (v.right > 0 ? '⬆' : '⬇') + ' on the right.').join('<br>')
+        : 'The leftover bottom is never 0 for any real <i>x</i>, so there is <b>no vertical asymptote</b>.') + '</div></div>');
+    stepsEl.innerHTML = out.join('') || '<p class="muted">Press the button to reveal the steps one at a time. Try to guess each one first!</p>';
+    nextBtn.disabled = step >= 3; nextBtn.textContent = step >= 3 ? 'All steps shown ✓' : 'Show step ' + (step + 1) + ' ▶';
+  }
+  function renderZoom() {
+    const box = $('.zout', root), chips = $('.zchips', root);
+    if (!an.va.length) { box.innerHTML = '<div class="callout">This function has no vertical asymptote, so there\'s no wall to zoom in on. Pick an example with a red dashed line!</div>'; chips.innerHTML = ''; plot.markers = []; plot.draw(); return; }
+    if (zi >= an.va.length) zi = 0;
+    chips.innerHTML = an.va.length > 1 ? an.va.map((v, i) => '<button class="chip ' + (i === zi ? 'on' : '') + '" data-i="' + i + '">' + eqX(v.x) + '</button>').join('') : '';
+    const a = an.va[zi].x, h = Math.pow(10, -(+slider.value)), xl = a - h, xr = a + h, yl = an.f(xl), yr = an.f(xr);
+    plot.markers = [{ x: xl, y: yl, color: '#dc2626' }, { x: xr, y: yr, color: '#7c3aed' }]; plot.draw();
+    box.innerHTML = '<p>Distance from the wall: <b>h = ' + fmtVal(h) + '</b></p><div class="zgrid">' +
+      '<div><span class="badge b-va">left of the wall</span><br>x = ' + fmtVal(xl) + '<div class="val">f(x) = ' + fmtVal(yl) + '</div>' + sgnArrow(yl) + '</div>' +
+      '<div><span class="badge b-sl">right of the wall</span><br>x = ' + fmtVal(xr) + '<div class="val">f(x) = ' + fmtVal(yr) + '</div>' + sgnArrow(yr) + '</div></div>' +
+      '<p class="muted">The closer you get, the bigger |f(x)| gets. It never stops growing, and that\'s exactly what "asymptote" means.</p>';
+  }
+  nextBtn.addEventListener('click', () => { if (step < 3) { step++; renderSteps(); } });
+  $('.reset', root).addEventListener('click', () => { step = 0; renderSteps(); });
+  slider.addEventListener('input', renderZoom);
+  $('.zchips', root).addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { zi = +b.dataset.i; renderZoom(); } });
+  new Picker($('.picker', root), ['v'], (P, Q) => { an = analyze(P, Q); curP = P; curQ = Q; plot.set(P, Q, an); step = 0; zi = 0; renderSteps(); renderZoom(); });
+})();
+
+/* ================= HORIZONTAL ================= */
+(function () {
+  const root = $('#tab-horizontal'), plot = new Plot($('.plot', root));
+  plot.layers = { va: true, ha: true, sl: false, hole: true };
+  let an = null, curP, curQ; const hz = $('.hz', root);
+  function renderDuel() {
+    const dP = an.dP, dQ = an.dQ;
+    const lead = p => { const t = trim(p); return fmtNum(t[t.length - 1]); };
+    const rule = an.ha ? (an.ha.rule) : 'more';
+    let verdict;
+    if (rule === 'less') verdict = 'Top is the <b>smaller</b> degree → the bottom wins → <span class="badge b-ha">y = 0</span>';
+    else if (rule === 'equal') verdict = 'Degrees are <b>equal</b> → divide the leading coefficients: <b>' + lead(an.P) + ' ÷ ' + lead(an.Q) + '</b> = <span class="badge b-ha">y = ' + fmtNum(an.ha.y).replace('-', '−') + '</span>';
+    else verdict = 'Top is the <b>bigger</b> degree → <b>no horizontal asymptote</b>.' + (an.slant ? ' But it\'s exactly 1 bigger, so there\'s a <span class="badge b-sl">slant asymptote</span> (next lesson!).' : '');
+    $('.duel-out', root).innerHTML =
+      '<div class="duel"><div class="side"><div class="muted">TOP</div><div class="deg">degree ' + (isFinite(dP) ? dP : '—') + '</div><div>leading coefficient ' + lead(an.P) + '</div></div><div class="big"><b>vs</b></div>' +
+      '<div class="side"><div class="muted">BOTTOM</div><div class="deg">degree ' + dQ + '</div><div>leading coefficient ' + lead(an.Q) + '</div></div></div>' +
+      '<div class="cases"><div class="case ' + (rule === 'less' ? 'on' : '') + '"><b>Top &lt; Bottom</b>HA is <b>y = 0</b></div>' +
+      '<div class="case ' + (rule === 'equal' ? 'on' : '') + '"><b>Top = Bottom</b>HA is <b>y = (lead of top) ÷ (lead of bottom)</b></div>' +
+      '<div class="case ' + (rule === 'more' ? 'on' : '') + '"><b>Top &gt; Bottom</b><b>No</b> horizontal asymptote</div></div>' +
+      '<div class="good" style="margin-top:10px">' + verdict + '</div>';
+  }
+  function renderFar() {
+    const rows = [1, 2, 3, 4, 5, 6].map(s => { const x = Math.pow(10, s), a = an.f(x), b = an.f(-x);
+      return '<tr><td>' + fmtVal(x) + '</td><td>' + fmtVal(a) + '</td><td>' + fmtVal(b) + '</td>' + (an.ha ? '<td>' + fmtVal(Math.abs(a - an.ha.y)) + '</td>' : '') + '</tr>'; }).join('');
+    $('.far', root).innerHTML = '<table class="t"><thead><tr><th>x</th><th>f(x)</th><th>f(−x)</th>' + (an.ha ? '<th>distance from y = ' + fmtNum(an.ha.y).replace('-', '−') + '</th>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<p class="muted">' + (an.ha ? 'The distance column shrinks toward 0, so the graph is hugging the line.' : 'No flattening here: the outputs keep growing.') + '</p>';
+    // crossings
+    let cx = '';
+    if (an.ha) {
+      const diff = psub(an.P, pscale(an.Q, an.ha.y)), rr = isZero(diff) ? [] : realRoots(diff).roots.map(r => r.x).filter(x => multAt(an.Q, x) === 0);
+      cx = rr.length ? '<div class="callout">🔁 Surprise: this graph <b>crosses</b> its horizontal asymptote at <b>x = ' + rr.map(r => fmtNum(r).replace('-', '−')).join(', ') + '</b>. That\'s allowed! A horizontal asymptote is about the far ends, not the middle.</div>' : '';
+    }
+    $('.cross', root).innerHTML = cx;
+  }
+  function renderZoom() {
+    const X = Math.pow(10, +hz.value); plot.autoView(X);
+    const a = an.f(X), b = an.f(-X);
+    $('.hz-out', root).innerHTML = 'Viewing x from <b>−' + fmtVal(X) + '</b> to <b>' + fmtVal(X) + '</b>.<br>f(' + fmtVal(X) + ') = <b>' + fmtVal(a) + '</b> &nbsp;·&nbsp; f(−' + fmtVal(X) + ') = <b>' + fmtVal(b) + '</b>' +
+      (an.ha ? '<br>Distance from y = ' + fmtNum(an.ha.y).replace('-', '−') + ': <b>' + fmtVal(Math.abs(a - an.ha.y)) + '</b>' : '');
+  }
+  hz.addEventListener('input', renderZoom);
+  new Picker($('.picker', root), ['h'], (P, Q) => { an = analyze(P, Q); curP = P; curQ = Q; plot.set(P, Q, an, 10); hz.value = 1; renderDuel(); renderFar(); renderZoom(); });
+})();
+
+/* ================= SYNTHETIC GRID (shared) ================= */
+function synthGridHTML(coeffs, c, step) {
+  const n = coeffs.length, { b, prod } = synthCompute(coeffs, c);
+  const vis = s => step >= s;
+  let h = '<div class="sg" style="grid-template-columns:auto repeat(' + n + ',minmax(52px,1fr))">';
+  h += '<div class="sg-lab"></div>' + coeffs.map((_, i) => { const p = n - 1 - i; return '<div class="sg-lab">' + (p === 0 ? 'number' : p === 1 ? 'x' : 'x<sup>' + p + '</sup>') + '</div>'; }).join('');
+  h += '<div class="sg-c">' + fmtNum(c).replace('-', '−') + '</div>' + coeffs.map((a, i) => '<div class="sg-cell top ' + (step === 0 && false ? 'hl' : '') + (i > 0 && step === 2 * i + 1 ? ' hl' : '') + '">' + fmtNum(a).replace('-', '−') + '</div>').join('');
+  h += '<div></div>' + coeffs.map((_, i) => i === 0 ? '<div class="sg-cell"></div>' : '<div class="sg-cell ' + (vis(2 * i) ? '' : 'ghost') + (step === 2 * i ? ' hl' : '') + '">' + (vis(2 * i) ? fmtNum(prod[i]).replace('-', '−') : '0') + '</div>').join('');
+  h += '<div></div>' + b.map((v, i) => { const s = i === 0 ? 1 : 2 * i + 1; return '<div class="sg-cell sum ' + (vis(s) ? '' : 'ghost') + (step === s ? ' hl' : '') + (i === n - 1 && vis(s) ? ' rem' : '') + '">' + (vis(s) ? fmtNum(v).replace('-', '−') : '0') + '</div>'; }).join('');
+  return h + '</div>';
+}
+function synthAnswer(coeffs, c) {
+  const { b } = synthCompute(coeffs, c), n = coeffs.length;
+  return { q: trim(b.slice(0, n - 1).reverse()), r: b[n - 1], b };
+}
+
+/* ================= SLANT ================= */
+(function () {
+  const root = $('#tab-slant'), plot = new Plot($('.plot', root));
+  plot.layers = { va: true, ha: false, sl: true, hole: true };
+  let an = null, dir = 1, curP, curQ, curTxt; const sl = $('.sg-s', root);
+  function renderCheck() {
+    const el = $('.sl-check', root);
+    el.innerHTML = '<div class="' + (an.slant ? 'good' : 'warn') + '">Top degree: <b>' + (isFinite(an.dP) ? an.dP : '—') + '</b> &nbsp; Bottom degree: <b>' + an.dQ + '</b> → ' +
+      (an.slant ? 'top is exactly <b>1 more</b> → there <b>is</b> a slant asymptote ✅' :
+        an.ha ? 'top is not 1 more than the bottom, so there\'s <b>no slant asymptote</b>. This one has a horizontal asymptote (<b>y = ' + fmtNum(an.ha.y).replace('-', '−') + '</b>) instead.' :
+          'the top is <b>2 or more</b> degrees bigger, so the graph curves away. There\'s <b>no slant</b> (and no horizontal) asymptote.') + '</div>';
+  }
+  function renderDiv() {
+    const el = $('.sl-div', root);
+    if (!an.slant) { el.innerHTML = '<p class="muted">Pick an example where the top has exactly one more degree than the bottom, like Handout Ex. 5 or 6.</p>'; return; }
+    const s = an.slant;
+    let h = '<p>Divide: <b>' + polyStr(an.P) + '</b> ÷ <b>' + polyStr(an.Q) + '</b></p>' +
+      '<p>Quotient: <b>' + polyStr(s.q) + '</b> &nbsp;·&nbsp; Remainder: <b>' + polyStr(s.r) + '</b></p>' +
+      '<p class="big">f(x) = ' + polyStr(s.q) + (deg(s.r) <= 0 && s.r[0] < 0 ? ' − ' + fracHTML(polyStr([-s.r[0]]), polyStr(an.Q)) : ' + ' + fracHTML(polyStr(s.r), polyStr(an.Q))) + '</p>' +
+      '<div class="good">The leftover fraction → 0 as |x| gets huge, so the slant asymptote is <span class="badge b-sl">' + eqSlant(s) + '</span> (just the quotient, drop the remainder).</div>';
+    if (an.dQ === 1 && Math.abs(an.Q[1] - 1) < 1e-9) {
+      const c = -an.Q[0], co = [...an.P].reverse();
+      h += '<p><b>Shortcut:</b> the bottom is <i>x − ' + fmtNum(c).replace('-', '−') + '</i>, so you can use synthetic division with <b>c = ' + fmtNum(c).replace('-', '−') + '</b>:</p>' + synthGridHTML(co, c, 2 * co.length) +
+        '<button class="btn ghost sl-open">Replay it step by step in the Synthetic Division lab →</button>';
+    } else if (an.dQ === 1) h += '<p class="muted">The bottom isn\'t in the form x − c (it has a number in front of x), so use long division, or divide top and bottom by that number first.</p>';
+    el.innerHTML = h;
+    const ob = $('.sl-open', root); if (ob) ob.addEventListener('click', () => { window.loadSynth(polyStr(an.P, false), polyStr(an.Q, false)); go('synth'); });
+  }
+  function renderGap() {
+    const box = $('.sl-gap', root);
+    if (!an.slant) { box.innerHTML = 'Choose a function with a slant asymptote to see the gap shrink.'; plot.markers = []; plot.draw(); return; }
+    const s = an.slant, x = dir * Math.pow(10, +sl.value), y = an.f(x), ly = s.m * x + s.b;
+    plot.markers = [{ x, y, color: '#2563eb' }, { x, y: ly, color: '#7c3aed' }]; plot.draw();
+    box.innerHTML = 'x = <b>' + fmtVal(x) + '</b><br>Curve: f(x) = <b>' + fmtVal(y) + '</b><br>Line: ' + eqSlant(s) + ' → <b>' + fmtVal(ly) + '</b><br>Gap between them: <b>' + fmtVal(Math.abs(y - ly)) + '</b> <span class="muted">(that\'s |remainder ÷ bottom|, and it shrinks)</span>' +
+      '<div class="muted" style="margin-top:4px">Dots appear on the graph while they\'re in view; slide further and they run off the edge (arrows show which way).</div>';
+  }
+  sl.addEventListener('input', renderGap);
+  $$('[data-dir]', root).forEach(b => b.addEventListener('click', () => { dir = +b.dataset.dir; $$('[data-dir]', root).forEach(o => o.classList.toggle('on', o === b)); renderGap(); }));
+  new Picker($('.picker', root), ['s'], (P, Q, t) => { an = analyze(P, Q); curP = P; curQ = Q; curTxt = t; plot.set(P, Q, an); renderCheck(); renderDiv(); renderGap(); });
+})();
+
+/* ================= SYNTHETIC LAB ================= */
+(function () {
+  const root = $('#tab-synth');
+  const PRE = [
+    ['x³ − 6x² + 11x − 6  ÷  (x − 1)', 'x^3-6x^2+11x-6', 'x-1'],
+    ['2x² + x − 1  ÷  (x − 3)  (handout Ex. 6)', '2x^2+x-1', 'x-3'],
+    ['x² − 4  ÷  (x − 1)  (handout Ex. 5)', 'x^2-4', 'x-1'],
+    ['x⁴ − 3x² + 2x  ÷  (x + 2)  (note the missing powers!)', 'x^4-3x^2+2x', 'x+2'],
+    ['x³ + 8  ÷  (x + 2)', 'x^3+8', 'x+2'],
+  ];
+  const sel = $('.sy-pre', root), pin = $('.sy-p', root), din = $('.sy-d', root), err = $('.sy-err', root);
+  sel.innerHTML = PRE.map((p, i) => '<option value="' + i + '">' + p[0] + '</option>').join('') + '<option value="c">✏️ My own…</option>';
+  let S = null, step = 0, timer = null;
+  function stop() { if (timer) { clearInterval(timer); timer = null; $('.sy-play', root).textContent = '▶▶ Auto-play'; } }
+  function say() {
+    const { coeffs, c } = S, n = coeffs.length, { b, prod } = synthCompute(coeffs, c), cs = fmtNum(c).replace('-', '−');
+    const miss = coeffs.some((a, i) => a === 0);
+    if (step === 0) return '<b>Setup.</b> The divisor is x ' + (c < 0 ? '+ ' + fmtNum(-c) : '− ' + fmtNum(c)) + ' = 0 → x = <b>' + cs + '</b>, so c = ' + cs + ' goes in the box. Then write every coefficient of the polynomial in order' + (miss ? ' (a <b>0</b> holds the place of any missing power).' : '.');
+    if (step === 1) return '<b>Bring down</b> the first coefficient: ' + fmtNum(b[0]).replace('-', '−') + '.';
+    if (step === 2 * n) { const a = synthAnswer(coeffs, c); return '<b>Read the answer.</b> The last number is the remainder. The others are the quotient\'s coefficients, starting one power lower than the original.'; }
+    const i = Math.floor(step / 2);
+    if (step % 2 === 0) return '<b>Multiply:</b> ' + cs + ' × ' + fmtNum(b[i - 1]).replace('-', '−') + ' = <b>' + fmtNum(prod[i]).replace('-', '−') + '</b>. Write it under the next coefficient.';
+    return '<b>Add the column:</b> ' + fmtNum(coeffs[i]).replace('-', '−') + ' + ' + fmtNum(prod[i]).replace('-', '−') + ' = <b>' + fmtNum(b[i]).replace('-', '−') + '</b>.';
+  }
+  function render() {
+    if (!S) return;
+    const n = S.coeffs.length;
+    $('.sy-grid', root).innerHTML = synthGridHTML(S.coeffs, S.c, step);
+    $('.sy-say', root).innerHTML = say();
+    $('.sy-back', root).disabled = step === 0; $('.sy-next', root).disabled = step >= 2 * n;
+    const fin = $('.sy-final', root);
+    if (step >= 2 * n) {
+      const a = synthAnswer(S.coeffs, S.c), P = [...S.coeffs].reverse();
+      fin.innerHTML = '<div class="good"><b>Quotient:</b> Q(x) = ' + polyStr(a.q) + '<br><b>Remainder:</b> R = ' + fmtNum(a.r).replace('-', '−') +
+        '<br><span class="muted">Remainder Theorem check: P(' + fmtNum(S.c).replace('-', '−') + ') = ' + fmtNum(peval(P, S.c)).replace('-', '−') + ' ✓ (equals the remainder!)</span>' +
+        (Math.abs(a.r) < 1e-9 ? '<br>🎉 Remainder 0 means (x ' + (S.c < 0 ? '+ ' + fmtNum(-S.c) : '− ' + fmtNum(S.c)) + ') is a <b>factor</b> of the polynomial.' : '') + '</div>';
+    } else fin.innerHTML = '';
+  }
+  function load(pStr, dStr) {
+    try {
+      const P = parsePoly(pStr), D = parsePoly(dStr);
+      if (deg(P) < 1) throw new Error('The polynomial needs an x in it.');
+      if (deg(D) !== 1 || Math.abs(D[1] - 1) > 1e-9) throw new Error('Synthetic division needs a divisor like x − 3 or x + 2 (just "x", no number in front).');
+      err.textContent = ''; stop();
+      S = { coeffs: [...P].reverse(), c: -D[0] }; step = 0; render();
+    } catch (e) { err.textContent = '⚠️ ' + e.message; }
+  }
+  window.loadSynth = (p, d) => { sel.value = 'c'; pin.value = p; din.value = d; load(p, d); };
+  sel.addEventListener('change', () => { if (sel.value !== 'c') { const p = PRE[+sel.value]; pin.value = p[1]; din.value = p[2]; load(p[1], p[2]); } });
+  const live = () => { sel.value = 'c'; load(pin.value, din.value); };
+  pin.addEventListener('input', live); din.addEventListener('input', live);
+  $('.sy-next', root).addEventListener('click', () => { stop(); if (S && step < 2 * S.coeffs.length) { step++; render(); } });
+  $('.sy-back', root).addEventListener('click', () => { stop(); if (step > 0) { step--; render(); } });
+  $('.sy-reset', root).addEventListener('click', () => { stop(); step = 0; render(); });
+  $('.sy-play', root).addEventListener('click', () => {
+    if (timer) return stop();
+    if (step >= 2 * S.coeffs.length) step = 0;
+    $('.sy-play', root).textContent = '⏸ Pause';
+    timer = setInterval(() => { if (step < 2 * S.coeffs.length) { step++; render(); } else stop(); }, 1100);
+  });
+  sel.value = '1'; pin.value = PRE[1][1]; din.value = PRE[1][2]; load(PRE[1][1], PRE[1][2]);
+})();
+
+/* ================= PRACTICE ================= */
+(function () {
+  const root = $('#tab-practice');
+  const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const pick = a => a[rnd(0, a.length - 1)];
+  const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const close = (a, b) => Math.abs(a - b) < 1e-6;
+  const fx = r => r === 0 ? 'x' : r > 0 ? '(x-' + r + ')' : '(x+' + (-r) + ')';
+  const cpre = c => c === 1 ? '' : c === -1 ? '-' : String(c);
+
+  function fnProblem(type, nStr, dStr, tag) { const P = parsePoly(nStr), Q = parsePoly(dStr); return { type, tag, nStr, dStr, P, Q, an: analyze(P, Q) }; }
+  function synProblem(pStr, dStr, tag) { const P = parsePoly(pStr), D = parsePoly(dStr); const c = -D[0], co = [...P].reverse(); return { type: 'sy', tag, nStr: pStr, dStr, coeffs: co, c, ans: synthAnswer(co, c) }; }
+
+  const fixed = {
+    va: [() => fnProblem('va', 'x(x-2)', 'x(x-1)(x+1)', 'Handout Example 1'), () => fnProblem('va', '1', 'x(x^2-16)', 'Handout Example 2')],
+    ha: [() => fnProblem('ha', '3x^2+2x-4', '2x^2-x+1', 'Handout Example 3'), () => fnProblem('ha', '(2x-1)(x+1)', '(3x+2)(5x+6)', 'Handout Example 4')],
+    sl: [() => fnProblem('sl', 'x^2-4', 'x-1', 'Handout Example 5'), () => fnProblem('sl', '2x^2+x-1', 'x-3', 'Handout Example 6')],
+    sy: [() => synProblem('x^3-6x^2+11x-6', 'x-1', 'Warm-up'), () => synProblem('2x^2+x-1', 'x-3', 'From Handout Example 6')],
+  };
+  const gen = {
+    va() {
+      const roots = shuffle([-5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 0]).slice(0, rnd(1, 3));
+      let dS = roots.map(fx).join(''); let Qp = roots.reduce((q, r) => pmul(q, [-r, 1]), [1]);
+      if (Math.random() < 0.2) { dS += '(x^2+1)'; Qp = pmul(Qp, [1, 0, 1]); }
+      const c = rnd(1, 3) * pick([1, -1]); let nS = cpre(c), has = false;
+      if (Math.random() < 0.5) { const a = pick([-4, -3, -2, -1, 1, 2, 3]); nS += fx(-a); has = true; }
+      if (Math.random() < 0.4) { nS += fx(pick(roots)); has = true; }
+      if (!has && Math.abs(c) === 1) nS = String(c);
+      if (!/[x(]/.test(nS)) nS = String(c);
+      return fnProblem('va', nS, dS, 'Fresh problem');
+    },
+    ha() {
+      const dQ = rnd(1, 3), kind = pick(['less', 'less', 'equal', 'equal', 'equal', 'one', 'two']);
+      const dP = kind === 'less' ? rnd(0, dQ - 1) : kind === 'equal' ? dQ : kind === 'one' ? dQ + 1 : dQ + 2;
+      const mk = d => { const c = []; for (let i = 0; i < d; i++) c.push(rnd(-5, 5)); const lead = pick([1, 2, 3, 4, 5, 6]) * pick([1, -1]); c.push(lead); return c; };
+      const P = mk(dP), Q = mk(dQ);
+      return fnProblem('ha', polyStr(P, false), polyStr(Q, false), 'Fresh problem');
+    },
+    sl() {
+      const c = pick([-5, -4, -3, -2, -1, 1, 2, 3, 4, 5]), m = pick([1, 1, 2, 3, -1, -2]), b = rnd(-5, 5), r = pick([-9, -7, -5, -3, -2, 2, 3, 4, 6, 8]);
+      const Qp = [-c, 1], P = padd(pmul(Qp, [b, m]), [r]);
+      return fnProblem('sl', polyStr(P, false), polyStr(Qp, false), 'Fresh problem');
+    },
+    sy() {
+      const n = rnd(3, 5), co = []; for (let i = 0; i < n; i++) co.push(rnd(-5, 5)); co.push(pick([1, 1, 2, 3, -1]));
+      if (Math.random() < 0.5 && n >= 3) co[rnd(1, n - 1)] = 0;
+      const c = pick([-4, -3, -2, -1, 1, 2, 3, 4]);
+      return synProblem(polyStr(co, false), 'x' + (c > 0 ? '-' + c : '+' + (-c)), 'Fresh problem');
+    },
+  };
+  const TYPES = { va: ['🧱', 'Vertical'], ha: ['🌅', 'Horizontal'], sl: ['📐', 'Slant'], sy: ['➗', 'Synthetic division'], mix: ['🎲', 'Mixed'] };
+  let type = 'va', prob = null, idx = { va: 0, ha: 0, sl: 0, sy: 0 }, solved = 0, tried = 0, counted = false;
+  const plot = new Plot($('.plot', root), { showAsym: false, height: 300 });
+  const chips = $('.pr-chips', root);
+  chips.innerHTML = Object.entries(TYPES).map(([k, v]) => '<button class="chip" data-k="' + k + '">' + v[0] + ' ' + v[1] + '</button>').join('');
+
+  function nextProblem() {
+    const t = type === 'mix' ? pick(['va', 'ha', 'sl', 'sy']) : type;
+    prob = idx[t] < fixed[t].length ? fixed[t][idx[t]++]() : gen[t]();
+    counted = false; render();
+  }
+  function render() {
+    $$('.chip', chips).forEach(c => c.classList.toggle('on', c.dataset.k === type));
+    $('.pr-score', root).textContent = '✅ ' + solved + ' solved  ·  ' + tried + ' attempted';
+    $('.pr-tag', root).textContent = (TYPES[prob.type][0]) + ' ' + prob.tag;
+    const prompts = {
+      va: 'Find every <b>vertical asymptote</b>. Type them like <code>x = -2, x = 3</code>, or type <code>none</code>.',
+      ha: 'Find the <b>horizontal asymptote</b>. Type it like <code>y = 3/2</code>, or type <code>none</code>.',
+      sl: 'Find the <b>slant asymptote</b>. Type it like <code>y = 2x + 7</code>.',
+      sy: 'Use <b>synthetic division</b> to find the quotient and remainder.',
+    };
+    $('.pr-prompt', root).innerHTML = prompts[prob.type];
+    if (prob.type === 'sy') {
+      $('.pr-fn', root).innerHTML = '(' + pretty(prob.nStr) + ') ÷ (' + pretty(prob.dStr) + ')';
+      $('.pr-inputs', root).innerHTML = '<div class="ans-row"><label>Q(x) =</label><input id="pr-q" placeholder="e.g. x^2 + 4x - 5" spellcheck="false" autocomplete="off"></div><div class="ans-row"><label>R =</label><input id="pr-r" placeholder="a number" spellcheck="false" autocomplete="off"></div>';
+    } else {
+      $('.pr-fn', root).innerHTML = fnHTML(prob.nStr, prob.dStr);
+      const ph = { va: 'x = …', ha: 'y = …', sl: 'y = …' }[prob.type];
+      $('.pr-inputs', root).innerHTML = '<div class="ans-row"><input id="pr-a" placeholder="' + ph + '" spellcheck="false" autocomplete="off"></div>';
+    }
+    $$('.pr-inputs input', root).forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') check(); }));
+    $('.pr-fb', root).innerHTML = ''; $('.pr-sol-out', root).innerHTML = '';
+    const showPlot = prob.type !== 'sy';
+    $('.pr-peek', root).style.display = showPlot ? '' : 'none';
+    $('.pr-plotbox', root).hidden = true;
+    if (showPlot) { plot.showAsym = false; plot.set(prob.P, prob.Q, prob.an); }
+  }
+  const say = (cls, html) => { $('.pr-fb', root).innerHTML = '<div class="' + cls + '">' + html + '</div>'; };
+  function revealPlot() { if (prob.type === 'sy') return; plot.showAsym = true; $('.pr-plotbox', root).hidden = false; plot.layers = { va: true, ha: true, sl: true, hole: true }; plot.resize(); plot.draw(); }
+
+  function parseNums(val) {
+    let s = normalizeExpr(val);
+    if (!s || /^(none|no|dne|n\/a)/.test(s) || s.includes('none') || s.includes('doesnotexist')) return [];
+    s = s.replace(/x=/g, '').replace(/and/g, ',').replace(/;/g, ',');
+    return s.split(',').filter(Boolean).map(t => { const p = parsePoly(t); if (deg(p) > 0) throw new Error('bad'); return p[0]; });
+  }
+  function check() {
+    let ok = false, msg = '';
+    try {
+      if (prob.type === 'va') {
+        const nums = parseNums($('#pr-a', root).value), truth = prob.an.va.map(v => v.x);
+        const missing = truth.filter(t => !nums.some(n => close(n, t))), extra = nums.filter(n => !truth.some(t => close(n, t)));
+        if (!missing.length && !extra.length) ok = true;
+        else {
+          const lines = [];
+          extra.forEach(e => lines.push(prob.an.holes.some(h => close(h.x, e)) ? 'x = ' + fmtNum(e).replace('-', '−') + ' is a <b>hole</b>: that factor cancels with the top, so it\'s an open circle, not a wall.' : 'x = ' + fmtNum(e).replace('-', '−') + ' doesn\'t make the (simplified) bottom equal 0.'));
+          if (missing.length) lines.push('You\'re missing ' + (missing.length === 1 ? 'one' : missing.length) + '. Factor the bottom and set <b>every</b> leftover factor to 0.');
+          msg = lines.join('<br>');
+        }
+      } else if (prob.type === 'ha') {
+        let s = normalizeExpr($('#pr-a', root).value);
+        const none = !s || /^(none|no|dne|n\/a)/.test(s) || s.includes('none') || s.includes('doesnotexist');
+        const truth = prob.an.ha;
+        if (none) { ok = !truth; if (!ok) msg = 'There <i>is</i> a horizontal asymptote. Compare the degrees of the top and bottom.'; }
+        else {
+          const p = parsePoly(s.replace(/^y=/, ''));
+          if (deg(p) > 0) { msg = 'A horizontal asymptote is a flat line, <code>y = a number</code>, with no x in it.'; }
+          else if (!truth) msg = 'The top has the bigger degree, so there\'s <b>no</b> horizontal asymptote.' + (prob.an.slant ? ' (It has a slant asymptote instead!)' : '');
+          else if (close(p[0], truth.y)) ok = true;
+          else msg = truth.rule === 'less' ? 'Not quite. The top has the smaller degree. What does the bottom "win"?' : 'Not quite. Same degrees → divide the <b>leading coefficients</b> (top ÷ bottom).';
+        }
+      } else if (prob.type === 'sl') {
+        const p = parsePoly(normalizeExpr($('#pr-a', root).value).replace(/^y=/, '')), s = prob.an.slant;
+        if (p.length === 2 && close(p[1], s.m) && close(p[0], s.b)) ok = true;
+        else if (p.length === 2 && close(p[1], s.m)) msg = 'The slope is right! Check the constant term. (Use the <b>quotient</b>, not the remainder.)';
+        else msg = 'Divide the top by the bottom. The <b>quotient</b> (without the remainder) is the line.';
+      } else {
+        const q = parsePoly($('#pr-q', root).value), r = parsePoly($('#pr-r', root).value), a = prob.ans;
+        const qok = q.length === a.q.length && q.every((c, i) => close(c, a.q[i])), rok = deg(r) <= 0 && close(r[0], a.r);
+        ok = qok && rok;
+        if (!ok) msg = (qok ? '' : 'The quotient doesn\'t match yet. Did you write a 0 for any missing power, and use c = the <i>opposite</i> sign of the number in (x − c)?<br>') + (rok ? '' : 'Check the remainder (the last number in the bottom row).');
+      }
+    } catch (e) { say('warn', 'I couldn\'t read that. ' + (prob.type === 'va' ? 'Try <code>x = -2, x = 3</code> or <code>none</code>.' : prob.type === 'sy' ? 'Use ^ for powers, like <code>x^2 + 4x - 5</code>.' : 'Try something like <code>y = 2x + 7</code>.')); return; }
+    if (!counted) { tried++; } 
+    if (ok) { if (!counted) solved++; counted = true; say('good', '🎉 <b>Correct!</b> Nice work.'); revealPlot(); }
+    else { counted = counted || false; if (!counted) { /* keep trying */ } say('bad', '🤔 Not yet. ' + msg); }
+    $('.pr-score', root).textContent = '✅ ' + solved + ' solved  ·  ' + tried + ' attempted';
+  }
+  function hint() {
+    const an = prob.an;
+    const h = {
+      va: 'Factor the bottom. Cancel any factor that\'s also on top (that makes a hole). Every factor left on the bottom, set to 0, gives a vertical asymptote. Factors like (x²+1) never equal 0.',
+      ha: 'Find the degree of the top and of the bottom. Top smaller → y = 0. Equal → top\'s leading coefficient ÷ bottom\'s. Top bigger → none.',
+      sl: 'Divide the top by the bottom (synthetic division works if the bottom is x − c). The quotient mx + b is the asymptote; ignore the remainder.',
+      sy: 'Write c in the box (opposite sign of the number in x − c), list the coefficients with 0s for missing powers, then: bring down, multiply, add, repeat.',
+    }[prob.type];
+    say('callout', '💡 ' + h);
+  }
+  function solution() {
+    let h = '';
+    if (prob.type === 'va') {
+      const an = prob.an;
+      h = '<p><b>Factor:</b> ' + fracHTML(factorHTML(prob.P), factorHTML(prob.Q)) + '</p>' +
+        (an.holes.length ? '<p>Cancels → hole' + (an.holes.length > 1 ? 's' : '') + ' at ' + an.holes.map(x => '<b>' + eqX(x.x) + '</b>').join(', ') + '.</p>' : '') +
+        '<p>Vertical asymptote' + (an.va.length === 1 ? '' : 's') + ': ' + (an.va.length ? an.va.map(v => '<b>' + eqX(v.x) + '</b>').join(', ') : '<b>none</b>') + '</p>';
+    } else if (prob.type === 'ha') {
+      const an = prob.an;
+      h = '<p>Top degree <b>' + an.dP + '</b>, bottom degree <b>' + an.dQ + '</b>.</p><p>' + (an.ha ? (an.ha.rule === 'less' ? 'Top is smaller → <b>y = 0</b>.' : 'Equal → ' + fmtNum(an.P[an.dP]) + ' ÷ ' + fmtNum(an.Q[an.dQ]) + ' → <b>y = ' + fmtNum(an.ha.y).replace('-', '−') + '</b>.') : 'Top is bigger → <b>no horizontal asymptote</b>' + (an.slant ? ' (but there is a slant asymptote: ' + eqSlant(an.slant) + ').' : '.')) + '</p>';
+    } else if (prob.type === 'sl') {
+      const an = prob.an, s = an.slant, c = -an.Q[0], co = [...an.P].reverse();
+      h = '<p>Divide using synthetic division with c = ' + fmtNum(c).replace('-', '−') + ':</p>' + synthGridHTML(co, c, 2 * co.length) +
+        '<p>Quotient ' + polyStr(s.q) + ', remainder ' + polyStr(s.r) + ' → slant asymptote <b>' + eqSlant(s) + '</b>.</p>';
+    } else {
+      h = synthGridHTML(prob.coeffs, prob.c, 2 * prob.coeffs.length) + '<p><b>Q(x) = ' + polyStr(prob.ans.q) + '</b>, <b>R = ' + fmtNum(prob.ans.r).replace('-', '−') + '</b></p>';
+    }
+    $('.pr-sol-out', root).innerHTML = '<div class="callout">' + h + '</div>';
+    revealPlot();
+  }
+  chips.addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { type = b.dataset.k; nextProblem(); } });
+  $('.pr-check', root).addEventListener('click', check);
+  $('.pr-hint', root).addEventListener('click', hint);
+  $('.pr-sol', root).addEventListener('click', solution);
+  $('.pr-peek', root).addEventListener('click', () => { if (prob.type === 'sy') return; plot.showAsym = false; $('.pr-plotbox', root).hidden = false; plot.resize(); plot.draw(); });
+  $('.pr-next', root).addEventListener('click', nextProblem);
+  nextProblem();
+})();
+
+go((location.hash || '#explore').slice(1));
+window.addEventListener('hashchange', () => go(location.hash.slice(1)));
+</script>
+</body>
+</html>
